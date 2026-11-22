@@ -1328,6 +1328,165 @@
     registrarRedesenho(desenhar);
   };
 
+  /* ------------------------------------------------------------------
+     O V da derivada numerica: truncamento descendo, arredondamento
+     subindo, e o minimo onde os dois se cruzam. As retas teoricas sao
+     desenhadas por cima para que o cruzamento seja visivel.
+     ------------------------------------------------------------------ */
+  REGISTRO.dilema = function (raiz) {
+    var corpo = moldura(raiz, 'Refinar melhora, até parar de melhorar');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var qual = 0, ke = 8;
+    var EPS = 2.220446049250313e-16;
+
+    var FUNCS = [
+      { rot: 'sen x', f: Math.sin, d: Math.cos,
+        d2: function (x) { return -Math.sin(x); }, x0: 1 },
+      { rot: 'eˣ', f: Math.exp, d: Math.exp, d2: Math.exp, x0: 1 },
+      { rot: 'x³', f: function (x) { return x * x * x; },
+        d: function (x) { return 3 * x * x; },
+        d2: function (x) { return 6 * x; }, x0: 1 }
+    ];
+
+    opcoes(corpo, FUNCS.map(function (o, i) { return { rot: o.rot, v: i }; }), 0,
+      function (v) { qual = v; desenhar(); });
+
+    deslizante(corpo, 'Marcar h =', 1, 16, 1, 8,
+      function (v) { ke = v; desenhar(); },
+      function (v) { return '10⁻' + v; });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'erro, progressiva', k: 'a' },
+      { rot: 'erro, central', k: 'b' },
+      { rot: 'melhor h visto, progr.', k: 'c' },
+      { rot: 'melhor h visto, central', k: 'd' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function erros(o) {
+      var hs = [], ep = [], ec = [], i;
+      for (i = 1; i <= 16; i += 0.25) {
+        var h = Math.pow(10, -i);
+        hs.push(i);
+        ep.push(Math.max(Math.abs((o.f(o.x0 + h) - o.f(o.x0)) / h - o.d(o.x0)), 1e-18));
+        ec.push(Math.max(Math.abs((o.f(o.x0 + h) - o.f(o.x0 - h)) / (2 * h)
+                                  - o.d(o.x0)), 1e-18));
+      }
+      return { hs: hs, ep: ep, ec: ec };
+    }
+
+    function desenhar() {
+      var o = FUNCS[qual];
+      var r = erros(o);
+      var p = G.preparar(cv, Math.min(300, Math.max(230, cv.clientWidth * 0.32)));
+
+      var g = G.eixos(cv, {
+        altura: p.A, limpar: false,
+        xmin: 0.8, xmax: 16.2, ymin: -13, ymax: 1,
+        rotX: 'refinamento, −log₁₀ h  (refinar é ir para a direita)',
+        rotY: 'log₁₀ do erro', divY: 7,
+        margem: { e: 52, d: 16, c: 12, b: 36 },
+        marcasX: [1, 4, 8, 12, 16].map(function (v) {
+          return { v: v, r: '10⁻' + v };
+        }),
+        formataY: function (v) { return String(Math.round(v)); }
+      });
+      var ct = g.ct, i;
+      ct.save();
+      ct.beginPath();
+      ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      ct.clip();
+
+      /* as retas teoricas: truncamento e arredondamento */
+      var fx = Math.abs(o.f(o.x0)), d2 = Math.abs(o.d2(o.x0));
+      [[function (h) { return h / 2 * d2; }, G.COR.clara, 'trunc. ~ h'],
+       [function (h) { return h * h / 6 * d2; }, G.COR.ambar, 'trunc. ~ h²'],
+       [function (h) { return EPS * fx / h; }, G.COR.verde, 'arred. ~ ε/h']
+      ].forEach(function (par) {
+        ct.beginPath();
+        for (i = 0; i <= 120; i++) {
+          var L = 0.8 + 15.4 * i / 120, h = Math.pow(10, -L);
+          var Y = Math.log10(Math.max(par[0](h), 1e-20));
+          if (i === 0) ct.moveTo(g.X(L), g.Y(Y)); else ct.lineTo(g.X(L), g.Y(Y));
+        }
+        ct.strokeStyle = par[1]; ct.lineWidth = 1.2;
+        ct.setLineDash([4, 3]); ct.stroke(); ct.setLineDash([]);
+      });
+
+      /* as duas curvas medidas */
+      [[r.ep, G.COR.mestra], [r.ec, G.COR.vinho]].forEach(function (par) {
+        ct.beginPath();
+        par[0].forEach(function (v, j) {
+          var X = g.X(r.hs[j]), Y = g.Y(Math.log10(v));
+          if (j === 0) ct.moveTo(X, Y); else ct.lineTo(X, Y);
+        });
+        ct.strokeStyle = par[1]; ct.lineWidth = 2.2; ct.stroke();
+      });
+
+      /* o h marcado */
+      var hm = Math.pow(10, -ke);
+      var epm = Math.abs((o.f(o.x0 + hm) - o.f(o.x0)) / hm - o.d(o.x0));
+      var ecm = Math.abs((o.f(o.x0 + hm) - o.f(o.x0 - hm)) / (2 * hm) - o.d(o.x0));
+      ct.strokeStyle = G.COR.tinta; ct.lineWidth = 1; ct.setLineDash([3, 3]);
+      ct.beginPath(); ct.moveTo(g.X(ke), g.y0); ct.lineTo(g.X(ke), g.y1);
+      ct.stroke(); ct.setLineDash([]);
+      [[epm, G.COR.mestra], [ecm, G.COR.vinho]].forEach(function (par) {
+        if (par[0] <= 0) return;
+        ct.fillStyle = par[1];
+        ct.beginPath();
+        ct.arc(g.X(ke), g.Y(Math.log10(par[0])), 4, 0, 2 * Math.PI);
+        ct.fill();
+      });
+      ct.restore();
+
+      /* legenda */
+      ct.save();
+      var itens = [['progressiva', G.COR.mestra], ['central', G.COR.vinho],
+                   ['~ h', G.COR.clara], ['~ h²', G.COR.ambar],
+                   ['~ ε/h', G.COR.verde]];
+      /* embaixo a esquerda: no alto a legenda cobria as duas curvas */
+      var ly = g.y1 - 8 - itens.length * 14;
+      ct.fillStyle = 'rgba(255,255,255,0.92)';
+      ct.fillRect(g.x0 + 6, ly, 98, 6 + itens.length * 14);
+      itens.forEach(function (it, j) {
+        var yy = ly + 12 + j * 14;
+        ct.fillStyle = it[1]; ct.fillRect(g.x0 + 12, yy - 4, 11, 3.5);
+        rotulo(ct, it[0], g.x0 + 29, yy, G.COR.tinta, 'left');
+      });
+      ct.restore();
+
+      /* onde cada curva tem o minimo */
+      function melhor(v) {
+        var j = 0, k;
+        for (k = 1; k < v.length; k++) if (v[k] < v[j]) j = k;
+        return Math.pow(10, -r.hs[j]);
+      }
+      mostrar({
+        a: N.sci(epm, 2), b: N.sci(ecm, 2),
+        c: N.sci(melhor(r.ep), 1), d: N.sci(melhor(r.ec), 1)
+      });
+
+      saida.innerHTML =
+        'Refinar é andar para a direita. No começo manda o '
+        + '<strong>truncamento</strong>, e cada curva desce colada à reta '
+        + 'tracejada da sua ordem. Passado o vale manda o '
+        + '<strong>arredondamento</strong>, que cresce como '
+        + '\\(\\varepsilon/h\\) porque o numerador é uma subtração de quase '
+        + 'iguais, e as duas curvas colapsam na mesma reta verde: dali em diante '
+        + 'o método não importa mais, só a aritmética. O vale fica onde as duas '
+        + 'se cruzam, em \\(\\sqrt{\\varepsilon}\\approx 10^{-8}\\) para a '
+        + 'progressiva e em \\(\\varepsilon^{1/3}\\approx 6\\times10^{-6}\\) '
+        + 'para a central. Arraste o marcador até 10⁻¹⁶ e veja o que acontece '
+        + 'com quem pede precisão demais.';
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {

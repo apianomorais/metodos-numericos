@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 3: Erros numéricos e propagação | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221024">
+<script src="assets/js/comum.js?v=202611221024"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <a href="aula03.html" class="num ativo" title="Aula 3: Erros numéricos e propagação">3</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. As três fontes, e por que separá-las</a></li>
+    <li><a href="#s2">2. Absoluto, relativo, e quantos dígitos valem</a></li>
+    <li><a href="#s3">3. Propagação pelas operações</a></li>
+    <li><a href="#s4">4. Propagação por funções, e a regra das potências</a></li>
+    <li><a href="#s5">5. O número de condição</a></li>
+    <li><a href="#s6">6. Condicionamento não é estabilidade</a></li>
+    <li><a href="#s7">7. Quantos dígitos vão sobrar</a></li>
+    <li><a href="#s8">8. O dilema: truncar contra arredondar</a></li>
+    <li><a href="#s9">9. No Spyder</a></li>
+    <li><a href="#s10">10. Exercícios resolvidos</a></li>
+    <li><a href="#s11">11. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 3 · Como a máquina erra</p>
+  <h1>Erros numéricos e propagação</h1>
+  <p class="subtitulo">As duas aulas anteriores mostraram de onde vem o erro. Esta mostra para onde ele vai: como cada operação o amplifica ou o amortece, como prever de antemão quantos dígitos vão sobrar, e por que refinar um método melhora o resultado só até certo ponto, e depois passa a piorá-lo.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Separar erro de dado, de truncamento e de arredondamento, e saber o que fazer contra cada um;</li>
+      <li>Propagar incertezas por operações e por funções, e saber quando a linearização vale;</li>
+      <li>Calcular o número de condição de um problema e estimar a perda de dígitos;</li>
+      <li>Distinguir problema mal condicionado de algoritmo instável, que pedem soluções opostas;</li>
+      <li>Localizar o passo ótimo de uma derivada numérica, e explicar por que ele existe;</li>
+      <li>Reconhecer o mesmo padrão em qualquer método que tenha um parâmetro de refinamento.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. As três fontes, e por que separá-las</h2>
+
+  <p>Um número que sai de um programa carrega erro de três procedências distintas. A separação
+  não é classificatória: cada uma pede uma providência diferente, e confundi-las leva a gastar
+  esforço no lugar errado.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">As três</span>
+    <ol>
+      <li><strong>Erro nos dados de entrada.</strong> Vem de fora e não se conserta por dentro:
+      um comprimento medido com régua traz a incerteza da régua, e uma constante física tabelada
+      traz a incerteza da tabela. Também entra aqui o erro de representação da aula 1, quando o
+      dado não cabe na base da máquina.</li>
+
+      <li><strong>Erro de truncamento do método.</strong> Vem de trocar um processo infinito por
+      um finito: uma série de Taylor cortada, uma integral trocada por soma, uma derivada
+      trocada por diferença. É matemático, e existiria numa máquina de precisão infinita. É o
+      único que se reduz refinando.</li>
+
+      <li><strong>Erro de arredondamento.</strong> Vem da aritmética de precisão finita da aula
+      2, uma operação de cada vez. É computacional, e existiria mesmo com um método exato.</li>
+    </ol>
+  </div>
+
+  <p>A observação que organiza a aula inteira está na comparação entre os dois últimos.
+  Refinar um método reduz o truncamento e <em>aumenta</em> o arredondamento, porque significa
+  mais operações sobre números mais próximos uns dos outros. Os dois puxam em sentidos opostos,
+  e por isso existe um ponto ótimo de refinamento, além do qual insistir piora o resultado. A
+  seção 8 mede esse ponto.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Absoluto, relativo, e quantos dígitos valem</h2>
+
+  <p>Se \(\bar{x}\) aproxima \(x\),</p>
+
+  <p>\[ \mathrm{EA} = |x - \bar{x}|, \qquad \mathrm{ER} = \frac{|x-\bar{x}|}{|x|}. \]</p>
+
+  <p>Na prática não se conhece \(x\), e trabalha-se com cotas: escreve-se
+  \(x = \bar{x} \pm \delta_x\), exatamente como no laboratório se escreve
+  \(g = (9{,}78 \pm 0{,}01)\) m/s².</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Por que o relativo é a medida de referência</span>
+    <p>Duas medições com o <em>mesmo</em> erro absoluto de 0,5 m:</p>
+    <p>\[ L_1 = (2{,}0 \pm 0{,}5)\ \text{m}, \qquad L_2 = (2000{,}0 \pm 0{,}5)\ \text{m}. \]</p>
+    <p>O erro relativo é 25 % na primeira e 0,025 % na segunda. O erro absoluto igual esconde
+    qualidades completamente diferentes, e é por isso que quase tudo nesta aula é dito em erro
+    relativo.</p>
+  </div>
+
+  <p>A ligação com os dígitos é direta e vale decorar: um erro relativo da ordem de
+  \(10^{-k}\) corresponde a cerca de \(k\) algarismos significativos confiáveis. Aproximar
+  \(\pi\) por 3,1416 dá \(\mathrm{ER} \approx 2{,}3\times10^{-6}\), ou seja, perto de seis
+  dígitos corretos, que é o que a aproximação tem.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Propagação pelas operações</h2>
+
+  <p>Operando dois números aproximados, \(\bar{x}\pm\delta_x\) e \(\bar{y}\pm\delta_y\),
+  desprezando termos de segunda ordem:</p>
+
+  <div class="bloco def">
+    <span class="rotulo">As cotas</span>
+    <p>Na <strong>soma e na subtração</strong> somam-se os erros absolutos:</p>
+    <p>\[ \delta_{x\pm y} = \delta_x + \delta_y. \]</p>
+    <p>Na <strong>multiplicação e na divisão</strong> somam-se os relativos:</p>
+    <p>\[ \mathrm{ER}_{xy} \approx \mathrm{ER}_{x/y} \approx \mathrm{ER}_x + \mathrm{ER}_y. \]</p>
+  </div>
+
+  <p>São cotas de pior caso: supõem que os erros conspiram na mesma direção. Vale aplicar a
+  primeira ao caso que a aula 2 chamou de cancelamento catastrófico, agora com números.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A subtração, quantificada</span>
+    <p>Sejam \(x = 12{,}345 \pm 0{,}005\) e \(y = 12{,}289 \pm 0{,}005\), as duas com erro
+    relativo de \(4{,}1\times10^{-4}\), que é uma medida excelente.</p>
+    <p>\[ x - y = 0{,}056 \pm 0{,}010. \]</p>
+    <p>O erro absoluto apenas dobrou. Mas o erro relativo da diferença é
+    \(0{,}010/0{,}056 = 17{,}9\%\): uma amplificação de <strong>441 vezes</strong>.</p>
+    <p>Nenhum dígito foi perdido na subtração, que é exata. O que a conta revelou é que a
+    diferença já carregava pouquíssima informação, e que ela estava escondida atrás de onze
+    dígitos iguais nos dois números.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A cota garantida contra a soma em quadratura</span>
+    <p>No laboratório não se usa essa cota, e sim a combinação em quadratura,
+    \(\delta = \sqrt{\delta_x^2 + \delta_y^2}\), que supõe erros independentes. A diferença
+    entre as duas convenções é grande, e dá para medi-la.</p>
+    <p>Somando \(n\) parcelas com erros independentes, uniformes em \([-1,1]\), em duzentas mil
+    tentativas:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(n\)</th><th>cota de pior caso</th><th>desvio típico</th>
+          <th>pior observado</th><th>razão</th></tr>
+      <tr><td>2</td><td>2,0</td><td>0,816</td><td>1,997</td><td>2,4</td></tr>
+      <tr><td>4</td><td>4,0</td><td>1,156</td><td>3,776</td><td>3,5</td></tr>
+      <tr><td>10</td><td>10,0</td><td>1,826</td><td>7,661</td><td>5,5</td></tr>
+      <tr><td>100</td><td>100,0</td><td>5,775</td><td>26,403</td><td>17,3</td></tr>
+    </table>
+    </div>
+    <p>A cota nunca é violada, como tem de ser. Mas para \(n = 100\) ela é dezessete vezes
+    maior que o desvio típico, e quase quatro vezes maior que o pior caso que apareceu em
+    duzentas mil tentativas.</p>
+    <p>Qual usar depende de o erro ser aleatório ou não. No laboratório ele é, e a quadratura é
+    a previsão honesta. Num algoritmo numérico ele não é: o erro de arredondamento de cada
+    passo é determinado pelos bits, e pode perfeitamente conspirar. Por isso o cálculo numérico
+    prefere a cota garantida, mesmo sabendo que ela é pessimista.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. Propagação por funções, e a regra das potências</h2>
+
+  <p>Quando o número aproximado entra numa função, a expansão de Taylor de primeira ordem
+  responde:</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A fórmula fundamental</span>
+    <p>\[ y = f(x) \;\Rightarrow\; \delta_y \approx |f'(\bar{x})|\,\delta_x. \]</p>
+    <p>Com várias variáveis, somam-se as contribuições:</p>
+    <p>\[ \delta_y \approx \left|\frac{\partial f}{\partial x_1}\right|\delta_{x_1}
+       + \cdots + \left|\frac{\partial f}{\partial x_n}\right|\delta_{x_n}. \]</p>
+    <p>A derivada funciona como fator de amplificação: onde a função varia depressa, erro
+    pequeno na entrada vira erro grande na saída.</p>
+  </div>
+
+  <div class="bloco fisica">
+    <span class="rotulo">O período do pêndulo, com incerteza</span>
+    <p>Mede-se \(L = (1{,}000 \pm 0{,}002)\) m e usa-se \(g = (9{,}78 \pm 0{,}01)\) m/s².
+    Para \(T = 2\pi\sqrt{L/g}\), as parciais são \(\partial T/\partial L = T/2L\) e
+    \(\partial T/\partial g = -T/2g\), de modo que</p>
+    <p>\[ \delta_T \approx \frac{T}{2}\left(\frac{\delta_L}{L} + \frac{\delta_g}{g}\right)
+       = 1{,}0046 \times (0{,}0020 + 0{,}0010) = 0{,}00304\ \text{s}, \]</p>
+    <p>\[ T = (2{,}009 \pm 0{,}003)\ \text{s}. \]</p>
+    <p>A linearização pode ser conferida sem linearizar nada: avaliando \(T\) nos quatro cantos
+    do retângulo de incerteza, a meia largura dá 0,003036 s, contra os 0,003036 s da fórmula.
+    Elas concordam em seis casas, porque as incertezas são pequenas diante dos valores.</p>
+    <p>A conta também diz onde gastar o esforço: a contribuição de \(L\) é 66 % do erro e a de
+    \(g\) é 34 %. Medir melhor o comprimento é o que compensa, e isso se sabe <em>antes</em> de
+    voltar ao laboratório.</p>
+  </div>
+
+  <div class="bloco def">
+    <span class="rotulo">A regra das potências</span>
+    <p>Para \(y = c\,x_1^{a_1}x_2^{a_2}\cdots x_n^{a_n}\), os erros relativos entram pesados
+    pelos expoentes:</p>
+    <p>\[ \mathrm{ER}_y \approx |a_1|\,\mathrm{ER}_{x_1} + \cdots
+       + |a_n|\,\mathrm{ER}_{x_n}. \]</p>
+    <p>No pêndulo as potências são \(1/2\) e \(-1/2\), e por isso os dois pesos valem meio. Em
+    \(E = \tfrac12 mv^2\) o peso de \(v\) é 2: um erro de 1 % na velocidade vira 2 % na energia,
+    enquanto 1 % na massa vira 1 %. Meça com mais cuidado a grandeza que aparece com a maior
+    potência.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. O número de condição</h2>
+
+  <p>A seção anterior mede a propagação caso a caso. O número de condição resume tudo num
+  número só, e é ele que permite decidir de antemão se vale a pena tentar.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Definição</span>
+    <p>\[ \kappa = \left|\frac{\delta y/y}{\delta x/x}\right|
+       = \left|\frac{x\,f'(x)}{f(x)}\right|, \qquad
+       \mathrm{ER}_{\text{saída}} \approx \kappa\,\mathrm{ER}_{\text{entrada}}. \]</p>
+    <p>Um problema é <strong>bem condicionado</strong> quando \(\kappa\) é moderado, e
+    <strong>mal condicionado</strong> quando \(\kappa \gg 1\).</p>
+  </div>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>função</th><th>\(x\)</th><th>\(\kappa\)</th><th>dígitos perdidos</th></tr>
+    <tr><td>\(\sqrt{x}\)</td><td>qualquer</td><td>0,5</td><td>nenhum, e ainda sobra</td></tr>
+    <tr><td>\(e^{x}\)</td><td>1</td><td>1</td><td>0</td></tr>
+    <tr><td>\(e^{x}\)</td><td>30</td><td>30</td><td>1,5</td></tr>
+    <tr><td>\(\ln x\)</td><td>1,001</td><td>1000</td><td>3,0</td></tr>
+    <tr><td>\(\tg x\)</td><td>1,5</td><td>21,3</td><td>1,3</td></tr>
+    <tr><td>\(\tg x\)</td><td>1,5707</td><td>\(1{,}6\times10^{4}\)</td><td>4,2</td></tr>
+  </table>
+  </div>
+
+  <p>A raiz quadrada dá \(\kappa = 1/2\) em qualquer ponto: ela <em>amortece</em> erro
+  relativo, e é sempre bem condicionada. Já avaliar \(\tg(1{,}5707)\) é um problema mal posto,
+  e a conta diz exatamente quanto: mudar o argumento na sexta casa decimal muda a resposta em
+  ordens de grandeza, e nenhum algoritmo evita isso.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O condicionamento de uma soma</span>
+    <p>Para \(y = \sum x_i\), a mesma definição dá uma fórmula particularmente útil:</p>
+    <p>\[ \kappa = \frac{\sum_i |x_i|}{\left|\sum_i x_i\right|}. \]</p>
+    <p>Ela mede exatamente o cancelamento. No exemplo da seção 3,
+    \((12{,}345 - 12{,}289)\), ela dá \(\kappa = 439{,}9\), e a amplificação medida foi de 441
+    vezes. A fórmula e a medida são a mesma coisa, e agora o "cancelamento catastrófico" da
+    aula 2 tem um número.</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>parcelas</th><th>soma</th><th>\(\kappa\)</th><th>dígitos perdidos</th></tr>
+      <tr><td>\(1 + 1 + 1\)</td><td>3</td><td>1</td><td>0</td></tr>
+      <tr><td>\(10^8 + 1 - 10^8\)</td><td>1</td><td>\(2\times10^{8}\)</td><td>8,3</td></tr>
+      <tr><td>\(1 - 0{,}9999999\)</td><td>\(10^{-7}\)</td><td>\(2\times10^{7}\)</td><td>7,3</td></tr>
+      <tr><td>\(12{,}345 - 12{,}289\)</td><td>0,056</td><td>439,9</td><td>2,6</td></tr>
+    </table>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Condicionamento não é estabilidade</h2>
+
+  <p>Chegamos à distinção mais importante da unidade, e a que mais se confunde na prática.
+  Quando um resultado sai errado, há duas causas possíveis e completamente diferentes, e
+  tratá-las como a mesma coisa leva a consertar o que não está quebrado.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">As duas, lado a lado</span>
+    <p>O <strong>condicionamento</strong> é propriedade do <em>problema</em>: mede o quanto a
+    resposta muda quando o dado de entrada muda.</p>
+    <p>A <strong>estabilidade</strong> é propriedade do <em>algoritmo</em>: mede se o caminho
+    escolhido acrescenta erro além do que o problema já tinha.</p>
+    <p>A consequência que organiza tudo: um algoritmo instável pode ser trocado; um problema
+    mal condicionado não. Se o problema é mal posto, <strong>nenhum algoritmo salva</strong>.</p>
+  </div>
+
+  <p><strong>Caso A: problema bem condicionado, algoritmo instável.</strong> Achar a raiz
+  pequena de \(x^2+bx+1=0\) para \(b\) grande. Essa raiz vale aproximadamente \(-1/b\), de modo
+  que \(dx/db = 1/b^2\) e</p>
+
+  <p>\[ \kappa = \left|\frac{b}{-1/b}\cdot\frac{1}{b^2}\right| = 1. \]</p>
+
+  <p>O problema não tem dificuldade nenhuma. Foi a fórmula de Bhaskara direta que estragou a
+  conta, e a aula 2 mostrou a reescrita que resolve. Conserto: trocar de algoritmo, três
+  linhas.</p>
+
+  <p><strong>Caso B: problema mal condicionado, algoritmo estável.</strong> A matriz de
+  Hilbert, \(H_{ij} = 1/(i+j-1)\), que não tem nada de artificial: é exatamente a matriz das
+  equações normais quando se ajusta um polinômio na base das potências, que é o que a aula 9
+  vai fazer. Resolvendo \(H\vec{x}=\vec{b}\) com a resposta conhecida \((1,1,\ldots,1)\):</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O erro previsto pelo número de condição</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(n\)</th><th>\(\kappa(H)\)</th><th>erro relativo medido</th>
+          <th>\(\kappa\varepsilon\)</th><th>razão</th></tr>
+      <tr><td>4</td><td>\(1{,}55\times10^{4}\)</td><td>\(3{,}4\times10^{-14}\)</td>
+          <td>\(3{,}4\times10^{-12}\)</td><td>0,010</td></tr>
+      <tr><td>6</td><td>\(1{,}50\times10^{7}\)</td><td>\(4{,}1\times10^{-11}\)</td>
+          <td>\(3{,}3\times10^{-9}\)</td><td>0,012</td></tr>
+      <tr><td>8</td><td>\(1{,}53\times10^{10}\)</td><td>\(6{,}7\times10^{-8}\)</td>
+          <td>\(3{,}4\times10^{-6}\)</td><td>0,020</td></tr>
+      <tr><td>10</td><td>\(1{,}60\times10^{13}\)</td><td>\(1{,}2\times10^{-5}\)</td>
+          <td>\(3{,}6\times10^{-3}\)</td><td>0,004</td></tr>
+      <tr><td>12</td><td>\(1{,}62\times10^{16}\)</td><td>\(1{,}3\times10^{-1}\)</td>
+          <td>\(3{,}6\)</td><td>0,036</td></tr>
+    </table>
+    </div>
+    <p>A última coluna fica entre 0,004 e 0,04: o erro medido é uma a duas ordens de grandeza
+    <em>menor</em> que o limite. É assim que tem de ser, porque \(\kappa\varepsilon\) é cota
+    superior, e um limite que fosse atingido sempre não seria limite, seria igualdade. O que
+    interessa é que o erro cresce junto com \(\kappa\), década por década.</p>
+  </div>
+
+  <p>Em \(n = 12\) o número de condição passa de \(10^{16}\), que é justamente
+  \(1/\varepsilon\), e aí não sobra dígito nenhum: um erro relativo de 13 % quer dizer que a
+  resposta calculada perdeu a relação com a correta.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">E o algoritmo aqui não errou</span>
+    <p>A eliminação de Gauss com pivotamento parcial do LAPACK, que é o que o
+    <code>numpy.linalg.solve</code> chama, é um dos algoritmos mais estáveis que existem. Ele
+    não tem defeito e não há o que trocar.</p>
+    <p>A única saída é <strong>mudar o problema</strong>. No caso do ajuste polinomial, isso se
+    faz trocando a base das potências \(1, x, x^2, \ldots\) por uma base ortogonal, e a aula 9
+    volta a este ponto com o número de condição medido antes e depois da troca.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. Quantos dígitos vão sobrar</h2>
+
+  <p>Tudo isso se resume numa conta de cabeça que deveria ser feita <em>antes</em> de rodar o
+  programa, e não depois de desconfiar do resultado:</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A regra dos dígitos</span>
+    <p>\[ \text{dígitos corretos} \approx 16 - \log_{10}\kappa. \]</p>
+    <p>Com \(\kappa = 10^{8}\) sobram oito dígitos, o que é bastante. Com \(\kappa = 10^{16}\)
+    não sobra nenhum, e o programa vai produzir números sem significado, com toda a aparência
+    de números legítimos.</p>
+  </div>
+
+  <p>O valor dessa estimativa está em ser feita de antemão. Ela diz se vale a pena sequer
+  tentar, e quando a resposta é não, ela diz também o que fazer: reformular o problema,
+  trabalhar em precisão estendida, ou aceitar menos dígitos e dizer isso no relatório.</p>
+
+  <p>Os três caminhos são legítimos. O que não é legítimo é publicar seis casas decimais de um
+  cálculo que só tinha duas.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. O dilema: truncar contra arredondar</h2>
+
+  <p>Falta pôr os dois erros em disputa direta, e o exemplo clássico é a derivada numérica, que
+  volta nas aulas 5 e 10. Da definição,</p>
+
+  <p>\[ f'(x) \approx \frac{f(x+h)-f(x)}{h}. \]</p>
+
+  <p>Taylor dá o erro de truncamento dessa aproximação: ele é da ordem de
+  \(\tfrac{h}{2}|f''|\), e <strong>cai</strong> quando \(h\) diminui. Mas o numerador é uma
+  subtração de quase iguais, o erro absoluto ali é da ordem de \(\varepsilon|f(x)|\), e
+  dividido por \(h\) ele <strong>cresce</strong> quando \(h\) diminui. O erro total é</p>
+
+  <p>\[ E(h) \approx \frac{h}{2}|f''| + \frac{\varepsilon|f|}{h}, \]</p>
+
+  <p>que tem mínimo onde as duas parcelas se igualam, em \(h^\ast \sim \sqrt{\varepsilon}
+  \approx 1{,}5\times10^{-8}\).</p>
+
+  <div data-widget="dilema"></div>
+
+  <div class="bloco ex">
+    <span class="rotulo">O que a medida mostra, e o que ela acrescenta</span>
+    <p>Para \(f = \sen x\) em \(x = 1\), o melhor \(h\) da diferença progressiva é
+    \(10^{-8}\), com erro \(3{,}0\times10^{-9}\): a previsão acerta.</p>
+    <p>A diferença <em>central</em>, porém, se comporta de outro jeito, e o material não chega
+    a tratar disso. O truncamento dela é \(\tfrac{h^2}{6}|f'''|\), de segunda ordem, enquanto o
+    arredondamento continua sendo \(\varepsilon|f|/h\). Igualando \(h^2\) com
+    \(\varepsilon/h\):</p>
+    <p>\[ h^\ast \sim \varepsilon^{1/3} \approx 6\times10^{-6}, \]</p>
+    <p>que é <strong>quatrocentas vezes maior</strong> que o da progressiva. Medindo:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>método</th><th>\(h^\ast\) previsto</th><th>\(h^\ast\) medido</th>
+          <th>erro no melhor \(h\)</th></tr>
+      <tr><td>progressiva</td><td>\(1{,}5\times10^{-8}\)</td><td>\(10^{-8}\)</td>
+          <td>\(3{,}0\times10^{-9}\)</td></tr>
+      <tr><td>central</td><td>\(6{,}1\times10^{-6}\)</td><td>\(10^{-5}\)</td>
+          <td>\(1{,}1\times10^{-11}\)</td></tr>
+    </table>
+    </div>
+    <p>A diferença central ganha nas duas pontas: ela chega a um erro 267 vezes menor, e chega
+    lá com um \(h\) mil vezes mais confortável, bem longe da região em que o arredondamento
+    manda.</p>
+    <p>Vale notar que o vale é raso: o programa varre \(h\) de década em década e o widget
+    varre de quarto em quarto de década, e por isso os dois localizam o mínimo em pontos
+    ligeiramente diferentes. O que importa não é a posição exata do fundo, que nem é bem
+    definida, mas o fato de existir um fundo.</p>
+  </div>
+
+  <div class="bloco fisica">
+    <span class="rotulo">O V, e por que ele reaparece o curso inteiro</span>
+    <p>No gráfico log-log o erro desenha um V. O ramo esquerdo é o truncamento, com inclinação
+    igual à ordem do método; o ramo direito é o arredondamento, com inclinação \(-1\) sempre, e
+    nele as duas curvas <em>colapsam na mesma reta</em>: ali o método não importa mais, só a
+    aritmética.</p>
+    <p>Esse padrão vale para qualquer método com parâmetro de refinamento. A integração
+    numérica da aula 10 tem o mesmo V, com o mesmo ramo direito de inclinação \(-1\), e o mesmo
+    recado: <strong>existe um ponto ótimo, e pedir mais precisão refinando além dele piora o
+    resultado</strong>.</p>
+    <p>Saber onde fica esse ponto é o que distingue quem usa um método de quem o entende. A
+    conta é sempre a mesma: escreva o erro de truncamento, escreva o de arredondamento, iguale
+    os dois.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/erros.py">
+      <span class="numero">Programa</span>
+      <h3>erros.py</h3>
+      <p>Compara a cota de pior caso com o que acontece de fato, por Monte Carlo; propaga a
+      incerteza do pêndulo e confere a linearização nos extremos; mede o número de condição de
+      funções conhecidas e da matriz de Hilbert; e localiza o \(h\) ótimo das duas diferenças
+      finitas.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>O \(\kappa\) da soma prevê a amplificação medida: \(4{,}05\times10^{-4}\) vezes 439,9
+    dá 0,1782, contra os 0,1786 medidos.</li>
+    <li>A cota de pior caso nunca é violada em 200 mil amostras, e o programa verifica isso com
+    um <code>assert</code>, para que a afirmação não dependa de eu ter olhado.</li>
+    <li>A propagação linearizada do pêndulo bate com o cálculo nos quatro cantos em
+    \(6{,}4\times10^{-7}\) relativos.</li>
+    <li>O \(\kappa\) de \(\sqrt{x}\) dá exatamente 0,5 em \(x=2\) e em \(x=10^{8}\).</li>
+    <li>O erro na matriz de Hilbert fica entre 0,4 % e 3,6 % do limite \(\kappa\varepsilon\),
+    sempre abaixo, e cresce junto com \(\kappa\).</li>
+    <li>O \(h\) ótimo medido é \(10^{-8}\) para a progressiva e \(10^{-5}\) para a central,
+    contra \(\sqrt{\varepsilon}\) e \(\varepsilon^{1/3}\) previstos.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Um passo relativo, e por quê</span>
+    <p>A primeira versão da função que mede \(\kappa\) usava uma diferença central com passo
+    absoluto \(h = 10^{-6}\). Em \(x = 10^{8}\) isso deu \(\kappa = 0{,}4911\) para a raiz
+    quadrada, onde a resposta exata é 0,5.</p>
+    <p>O motivo é a aula 2: em \(10^{8}\) o espaçamento da grade é \(1{,}5\times10^{-8}\), de
+    modo que \(h = 10^{-6}\) cabe em umas poucas dezenas de passos da grade, e a diferença sai
+    com ruído. O passo virou relativo, \(h = 10^{-6}\max(1,|x|)\), e o 0,5 apareceu.</p>
+    <p>É a seção 8 mordendo quem escreveu a seção 5, e vale como lembrete de que o dilema não é
+    um exemplo didático: ele aparece em qualquer lugar onde se divide uma diferença por um
+    número pequeno.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 3.1 · O número de condição de uma soma</span>
+    <p>Mostre que, para \(S = \sum_i x_i\), o número de condição em relação a perturbações
+    relativas independentes nas parcelas é \(\kappa = \sum|x_i| / |\sum x_i|\). Depois use isso
+    para explicar, sem rodar nada, por que \(\sum_{k=1}^{N} (-1)^k/k\) é bem condicionada e
+    \(e^{-20}\) calculado pela série de Taylor não é.</p>
+
+    <p><strong>A dedução.</strong> Perturbe cada parcela por um fator \((1+\epsilon_i)\) com
+    \(|\epsilon_i| \le \epsilon\). A soma perturbada é
+    \(\tilde{S} = \sum x_i(1+\epsilon_i) = S + \sum x_i\epsilon_i\), de modo que</p>
+    <p>\[ \frac{|\tilde{S}-S|}{|S|} \le \frac{\epsilon \sum|x_i|}{|S|}. \]</p>
+    <p>O fator que multiplica \(\epsilon\) é o \(\kappa\) procurado, e o limite é atingido
+    quando todos os \(\epsilon_i\) têm o sinal do respectivo \(x_i\).</p>
+
+    <p><strong>A série alternada.</strong> Para \(\sum (-1)^k/k\), o numerador é
+    \(\sum 1/k \approx \ln N\) e o denominador tende a \(\ln 2 = 0{,}693\). Então
+    \(\kappa \approx \ln N / \ln 2\), que para \(N = 10^6\) prevê 19,9, e a medida dá
+    20,8. Perder uma casa decimal e meia é preço modesto, e por isso essa série, apesar de
+    alternar sinais, é inofensiva: o cancelamento existe, mas é brando.</p>
+
+    <p><strong>A exponencial.</strong> Para \(e^{-20} = \sum (-20)^k/k!\), as parcelas crescem
+    até \(k = 20\), onde valem \(20^{20}/20! \approx 4{,}3\times10^{7}\), e a soma vale
+    \(2{,}1\times10^{-9}\). Logo</p>
+    <p>\[ \kappa \approx \frac{\sum |{-20}|^k/k!}{e^{-20}} = \frac{e^{20}}{e^{-20}}
+       = e^{40} \approx 2{,}4\times10^{17}. \]</p>
+    <p>Com \(\kappa\) cinquenta vezes maior que \(1/\varepsilon\), a regra da seção 7
+    prevê <strong>nenhum dígito correto</strong>, e é isso que acontece: a série devolve
+    \(6{,}15\times10^{-9}\) onde a resposta é \(2{,}06\times10^{-9}\). Nem a ordem de
+    grandeza está certa por acidente: o erro relativo é de 198 %.</p>
+
+    <p><strong>A saída.</strong> Calcular \(e^{+20}\), onde todas as parcelas são positivas e
+    \(\kappa = 1\), e tomar o recíproco. Mesma matemática, \(\kappa\) dezessete ordens de
+    grandeza menor, e a resposta certa: \(2{,}061154\times10^{-9}\), com erro relativo
+    \(4\times10^{-16}\), que é o melhor possível. É a lição da aula 2 outra vez: quando
+    houver subtração de parcelas grandes para dar um resultado pequeno, reescreva.</p>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 3.2 · Onde está o erro, no problema ou no código</span>
+    <p>Um aluno calcula \(f(x) = \dfrac{e^x - 1}{x}\) em \(x = 10^{-8}\) e obtém
+    \(0{,}99999999392\), quando a resposta correta é \(1{,}000000005\). Ele conclui que o
+    problema é mal condicionado. Está certo? Diga o que fazer.</p>
+
+    <p><strong>Primeiro, o condicionamento.</strong> A função tende a 1 quando \(x\to 0\), e</p>
+    <p>\[ \kappa = \left|\frac{x f'(x)}{f(x)}\right|. \]</p>
+    <p>Perto da origem, \(f(x) \approx 1 + x/2\), de modo que \(f' \approx 1/2\) e
+    \(\kappa \approx x/2 \to 0\). O problema é <strong>excepcionalmente bem condicionado</strong>:
+    perturbar \(x\) quase não muda a resposta. A conclusão do aluno está errada.</p>
+
+    <p><strong>Então o erro é do algoritmo.</strong> E dá para localizá-lo: em
+    \(x = 10^{-8}\), \(e^x = 1{,}00000001\), e subtrair 1 desse número é exatamente a situação
+    da seção 3. O \(\kappa\) da subtração vale</p>
+    <p>\[ \frac{|e^x| + |{-1}|}{|e^x - 1|} \approx \frac{2}{10^{-8}} = 2\times10^{8}, \]</p>
+    <p>que prevê a perda de 8,3 dígitos. Dos dezesseis disponíveis sobram oito, e os oito
+    dígitos corretos obtidos (0,99999999) são exatamente esses.</p>
+
+    <p><strong>A correção.</strong> A função <code>numpy.expm1</code> calcula \(e^x-1\)
+    diretamente, sem formar \(e^x\) e sem subtrair, e devolve os dezesseis dígitos. Ela existe
+    nas bibliotecas de toda linguagem séria precisamente para este caso, e o mesmo vale para
+    <code>log1p</code>, que calcula \(\ln(1+x)\).</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">O diagnóstico que vale guardar</span>
+      <p>Diante de um resultado ruim, a primeira pergunta é <em>qual</em> \(\kappa\): o do
+      problema ou o de algum passo intermediário do algoritmo. Se o problema é bem condicionado
+      e o resultado é ruim, existe um passo intermediário mal condicionado, e ele pode ser
+      contornado.</p>
+      <p>Se o problema é mal condicionado, não adianta procurar culpado no código. Nesse caso a
+      resposta profissional é dizer quantos dígitos a resposta tem, e não melhorá-la.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>3.1</b> Um cilindro tem \(d = (12{,}4 \pm 0{,}1)\) mm e
+      \(h = (45{,}0 \pm 0{,}5)\) mm. Calcule o volume e sua incerteza pelas duas convenções,
+      cota máxima e quadratura, e diga qual das duas medidas vale a pena melhorar. Repita
+      supondo que você consiga reduzir pela metade a incerteza da que escolheu.</li>
+
+      <li><b>3.2</b> Reproduza a tabela de Monte Carlo da seção 3 para \(n\) de 2 a 1000, e faça
+      o gráfico da razão entre a cota de pior caso e o desvio típico. Mostre que ela cresce como
+      \(\sqrt{n}\) e explique por quê.</li>
+
+      <li><b>3.3</b> Calcule \(e^{-20}\) de três maneiras: pela série direta, pelo recíproco de
+      \(e^{20}\), e pela <code>np.exp</code>. Compare com o valor exato, conte os dígitos
+      corretos de cada uma, e verifique a previsão \(\kappa = e^{40}\) do exercício resolvido
+      3.1.</li>
+
+      <li><b>3.4</b> Reproduza o V da seção 8 para \(f(x) = e^{x}\) em \(x = 10\) e em
+      \(x = -10\). Os dois ramos mudam de lugar? Explique a partir de \(|f|\) e \(|f''|\) na
+      fórmula de \(E(h)\), e verifique se o \(h\) ótimo medido confere com a previsão.</li>
+
+      <li><b>3.5</b> Deduza o \(h\) ótimo da derivada <em>segunda</em> por diferença central,
+      \([f(x+h)-2f(x)+f(x-h)]/h^2\), igualando truncamento e arredondamento. Meça em
+      \(f = \sen x\) e compare com a previsão \(h^\ast \sim \varepsilon^{1/4}\).</li>
+
+      <li><b>3.6</b> Para \(f(x) = \ln x\), faça o gráfico de \(\kappa\) contra \(x\) de 1 a 10
+      e identifique onde o problema é mal condicionado. Em seguida explique o que isso significa
+      fisicamente num cálculo de entropia, \(S = k_B \ln \Omega\), quando \(\Omega\) está perto
+      de 1.</li>
+
+      <li><b>3.7</b> A matriz de Hilbert com \(n = 12\) tem \(\kappa = 1{,}6\times10^{16}\).
+      Resolva o sistema em precisão arbitrária com <code>mpmath</code>, aumentando os dígitos de
+      20 a 60, e descubra quantos dígitos de trabalho são necessários para obter dez dígitos
+      corretos na resposta. Compare com a previsão da seção 7.</li>
+
+      <li><b>3.8</b> Em meia página: um relatório traz a medida \(g = (9{,}7834 \pm 0{,}2)\)
+      m/s². Diga o que está errado na apresentação, reescreva o resultado corretamente, e
+      explique a regra que você usou. Depois diga quantos dígitos fariam sentido se a incerteza
+      fosse 0,02 e se fosse 0,002.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula02.html"><small>Aula anterior</small>← 2. Ponto flutuante</a>
+    <a class="prox" href="aula05.html"><small>Próxima aula</small>5. Newton →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221024"></script>
+</body>
+</html>

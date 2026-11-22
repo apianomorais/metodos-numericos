@@ -8,10 +8,10 @@ O QUE RESOLVE
        o quanto a ordem das parcelas muda o resultado.
     3. Exibe o cancelamento catastrófico em duas fórmulas algebricamente
        idênticas, e mostra qual delas usar.
-    4. Separa condicionamento de problema de estabilidade de algoritmo,
-       que são coisas diferentes e costumam ser confundidas.
-    5. Mede o número de condição de uma matriz e mostra que ele prevê,
-       com antecedência, quantos dígitos a solução vai perder.
+
+    O condicionamento e a estabilidade, que a primeira versão deste
+    programa também media, saíram para erros.py, que é o programa da
+    aula 3.
 
 A IDEIA
     Um numero de ponto flutuante de 64 bits gasta 1 bit no sinal, 11 no
@@ -28,12 +28,8 @@ A IDEIA
     REVELA o erro relativo que ja estava la: os digitos bons se cancelam
     e os ruins sobem para o topo.
 
-    A distincao final e a mais importante da aula. Condicionamento e
-    propriedade do PROBLEMA: diz o quanto a resposta muda quando o dado
-    muda, e nenhum algoritmo conserta um problema mal condicionado.
-    Estabilidade e propriedade do ALGORITMO: diz se ele acrescenta erro
-    ao que o problema ja tinha. Um algoritmo estavel num problema mal
-    condicionado da uma resposta ruim, e a culpa nao e dele.
+    O que fazer a respeito, e como prever de antemao quantos digitos
+    vao sobrar, e assunto da aula 3.
 
 COMO CONFERIR SE ESTA CERTO
     1. O epsilon medido tem de dar 2^-52, e sys.float_info.epsilon
@@ -43,9 +39,7 @@ COMO CONFERIR SE ESTA CERTO
     3. As duas formulas da equacao do segundo grau tem de concordar
        quando nao ha cancelamento e divergir quando ha, e a formula
        estavel tem de bater com a de precisao arbitraria.
-    4. O erro relativo da solucao do sistema tem de ser limitado pelo
-       numero de condicao vezes o epsilon.
-    5. Cada afirmacao de perda de digitos e conferida contra o resultado
+    4. Cada afirmacao de perda de digitos e conferida contra o resultado
        exato obtido com a biblioteca de precisao arbitraria.
 
 Prof. Apiano Morais - LFCA/URCA - Metodos Numericos
@@ -293,100 +287,6 @@ def main():
     print('   reescrever a formula para que a subtracao nao aconteca. A')
     print('   forma estavel calcula a raiz grande, onde os sinais somam, e')
     print('   obtem a pequena pelo produto das raizes, que vale c/a.')
-    print()
-
-    print('=' * 72)
-    print('4. CONDICIONAMENTO DO PROBLEMA, ESTABILIDADE DO ALGORITMO')
-    print('=' * 72)
-    print('   Sao duas coisas diferentes, e o exemplo acima so trata da')
-    print('   segunda. Para separa-las, a conta de achar a raiz pequena de')
-    print('   x^2 + bx + 1 com b = 1e8:')
-    print()
-    # A perturbacao tem de ser feita em precisao arbitraria. Em float64,
-    # 1e8*(1+1e-16) volta a ser exatamente 1e8, porque o espacamento da
-    # grade ali e 1,5e-8 e a perturbacao de 1e-8 nao chega a um passo:
-    # medir condicionamento com a propria aritmetica que esta sob
-    # suspeita nao funciona.
-    getcontext().prec = 50
-    B = Decimal(10) ** 8
-    delta = Decimal(10) ** -16
-
-    def raiz_pequena(Bv):
-        d = (Bv * Bv - 4).sqrt()
-        return min((-Bv + d) / 2, (-Bv - d) / 2, key=abs)
-
-    ex, exp_ = raiz_pequena(B), raiz_pequena(B * (1 + delta))
-    var = abs(exp_ / ex - 1)
-    # impressos com 22 digitos a partir do Decimal: em float64 os dois
-    # apareceriam identicos, porque diferem so na 17a casa
-    # format() com Decimal preserva a precisao; o operador % converteria
-    # para float antes de imprimir e apagaria justamente o que interessa
-    print('      raiz com b = 1e8:                %s' % format(ex, '.21e'))
-    print('      raiz com b perturbado em 1e-16:  %s' % format(exp_, '.21e'))
-    print('      variacao relativa da saida:      %.3e' % float(var))
-    print('      variacao relativa da entrada:    %.3e' % float(delta))
-    print('      numero de condicao do problema:  %.4f' % float(var / delta))
-    print()
-    print('   A conta fechada confirma: para b grande a raiz pequena vale')
-    print('   -1/b, de modo que dx/db = 1/b^2 e o numero de condicao')
-    print('   relativo, |(b/x)(dx/db)|, vale exatamente 1.')
-    print()
-    print('   O problema e BEM condicionado: perturbar o dado em 1e-16')
-    print('   muda a resposta em 1e-16. Ele nao tinha nada de dificil. Foi')
-    print('   o algoritmo ingenuo que estragou a conta, e por isso ele e')
-    print('   chamado de INSTAVEL. Trocando de algoritmo, resolve-se.')
-    print()
-    print('   Agora um problema que nenhum algoritmo salva. A matriz de')
-    print('   Hilbert, H_ij = 1/(i+j-1), resolvendo H x = b com b')
-    print('   escolhido para que a resposta seja exatamente (1, 1, ..., 1):')
-    print()
-    print('        n     cond(H)       erro relativo   cond * eps    razao')
-    for n in (4, 6, 8, 10, 12):
-        H = hilbert(n)
-        x_ex = np.ones(n)
-        rhs = H @ x_ex
-        x = np.linalg.solve(H, rhs)
-        k = np.linalg.cond(H)
-        err = np.linalg.norm(x - x_ex) / np.linalg.norm(x_ex)
-        prev = k * e
-        print('      %3d  %12.3e  %14.3e  %12.3e  %7.3f'
-              % (n, k, err, prev, err / prev if prev else float('nan')))
-    print()
-    print('   A ultima coluna fica entre 0,004 e 0,04, ou seja, o erro')
-    print('   medido e uma a duas ordens de grandeza MENOR que o limite.')
-    print('   E assim que tem de ser: cond vezes epsilon e um limite')
-    print('   superior, e ele seria inutil se fosse atingido sempre. O que')
-    print('   interessa e que o erro cresce junto com cond(H), decada por')
-    print('   decada, e e por isso que o limite serve para prever.')
-    print()
-    print('   Em n = 12 o numero de condicao passa de 1e16, que e')
-    print('   justamente 1/epsilon, e ai NAO SOBRA DIGITO NENHUM: o erro')
-    print('   relativo de 13 por cento quer dizer que a resposta calculada')
-    print('   nao tem mais relacao com a correta.')
-    print()
-    print('   E essencial que o algoritmo usado aqui, a eliminacao de')
-    print('   Gauss com pivotamento do LAPACK, e um dos mais estaveis que')
-    print('   existem. Ele nao errou: o problema e que esta mal posto.')
-    print('   Nenhuma reescrita de formula conserta isso, e a unica saida')
-    print('   e mudar o problema, trocando a base das potencias por uma')
-    print('   base ortogonal, que e o que a aula 3 faz no ajuste.')
-    print()
-
-    print('=' * 72)
-    print('5. A REGRA PRATICA QUE SAI DE TUDO ISSO')
-    print('=' * 72)
-    print('   Digitos perdidos = log10(numero de condicao).')
-    print()
-    print('        cond        digitos perdidos   sobram de 16')
-    for k in (1e2, 1e4, 1e8, 1e12, 1e16, 1e18):
-        perd = np.log10(k)
-        print('      %9.0e  %16.0f  %13s'
-              % (k, perd, '%.0f' % max(0, 16 - perd) if perd < 16 else 'nenhum'))
-    print()
-    print('   Essa conta deveria ser feita ANTES de rodar o programa, e')
-    print('   nao depois de desconfiar do resultado. Ela diz de antemao')
-    print('   quantos digitos vao sobrar, e portanto se vale a pena')
-    print('   sequer tentar.')
     print()
 
 
