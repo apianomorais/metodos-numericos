@@ -2001,6 +2001,214 @@
     registrarRedesenho(desenhar);
   };
 
+  REGISTRO.multiplicidade = function (raiz) {
+    var corpo = moldura(raiz, 'O chão de ruído em volta de uma raiz múltipla');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var m = 2, jan = -3;            /* janela: 10^jan em volta da raiz */
+    var EPS = 2.220446049250313e-16;
+
+    /* p(x) = (x-2)^m (x-5)(x+3), em duas formas: fatorada e expandida */
+    function expandido(mm) {
+      var c = [1], i, j, novo, raizes = [], k;
+      for (k = 0; k < mm; k++) raizes.push(2);
+      raizes.push(5); raizes.push(-3);
+      for (i = 0; i < raizes.length; i++) {
+        novo = [];
+        for (j = 0; j <= c.length; j++) novo.push(0);
+        for (j = 0; j < c.length; j++) {
+          novo[j] += c[j];
+          novo[j + 1] += -raizes[i] * c[j];
+        }
+        c = novo;
+      }
+      return c;
+    }
+    /* notação científica em texto puro, porque rótulo de canvas não
+       aceita HTML (N.sci devolve <sup>) */
+    var SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²',
+      '3': '³', '4': '⁴', '5': '⁵', '6': '⁶',
+      '7': '⁷', '8': '⁸', '9': '⁹' };
+    function expo(e) {
+      return String(e).split('').map(function (d) { return SUP[d] || d; }).join('');
+    }
+    function sciTxt(v, casas) {
+      if (v === 0) return '0';
+      var e = Math.floor(Math.log10(Math.abs(v)));
+      var mant = v / Math.pow(10, e);
+      if (e >= -1 && e <= 2) return N.fmt(v, casas === undefined ? 2 : casas);
+      return N.fmt(mant, casas === undefined ? 1 : casas) + '·10' + expo(e);
+    }
+    function aval(c, x) {
+      var v = 0, i;
+      for (i = 0; i < c.length; i++) v = v * x + c[i];
+      return v;
+    }
+    /* a forma fatorada: perto de x = 2 a subtração x - 2 é exata
+       (lema de Sterbenz), de modo que esta é a curva de referência */
+    function fatorada(mm, x) {
+      var d = x - 2, v = 1, k;
+      for (k = 0; k < mm; k++) v *= d;
+      return v * (x - 5) * (x + 3);
+    }
+    function newton(c, x0, mult) {
+      var x = x0, melhor = x, pm = Math.abs(aval(c, x)), k, v, dv, dx, pv;
+      var dc = [], i, n = c.length - 1;
+      for (i = 0; i < n; i++) dc.push(c[i] * (n - i));
+      for (k = 0; k < 400; k++) {
+        v = aval(c, x); dv = aval(dc, x);
+        if (dv === 0) break;
+        dx = -(mult || 1) * v / dv;
+        if (x + dx === x) break;
+        x = x + dx;
+        pv = Math.abs(aval(c, x));
+        if (pv < pm) { melhor = x; pm = pv; }
+        else if (Math.abs(dx) < 1e-8 * Math.max(1, Math.abs(x))) break;
+      }
+      return { x: melhor, passos: k + 1 };
+    }
+
+    opcoes(corpo, [
+      { rot: 'simples (m = 1)', v: 1 }, { rot: 'dupla (m = 2)', v: 2 },
+      { rot: 'tripla (m = 3)', v: 3 }, { rot: 'quádrupla (m = 4)', v: 4 }
+    ], 2, function (v) { m = v; desenhar(); });
+
+    deslizante(corpo, 'janela em volta de x = 2:', -8, -1, 1, -3,
+      function (v) { jan = v; desenhar(); },
+      function (v) { return '±10' + '<sup>' + v + '</sup>'; });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'chão de ruído de p', k: 'r' },
+      { rot: 'largura do chão em x', k: 'l' },
+      { rot: 'ε^(1/m)', k: 'e' },
+      { rot: 'erro de Newton', k: 'n' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var c = expandido(m);
+      var h = Math.pow(10, jan);
+      var p = G.preparar(cv, Math.min(300, Math.max(210, cv.clientWidth * 0.32)));
+
+      /* amostra a janela e descobre a escala vertical */
+      var NP = 480, i, xx, lo = Infinity, hi = -Infinity, calc = [], exato = [];
+      for (i = 0; i <= NP; i++) {
+        xx = 2 - h + 2 * h * i / NP;
+        var ve = fatorada(m, xx), vc = aval(c, xx);
+        exato.push([xx, ve]); calc.push([xx, vc]);
+        if (ve < lo) lo = ve; if (ve > hi) hi = ve;
+        if (vc < lo) lo = vc; if (vc > hi) hi = vc;
+      }
+      var mg = 0.15 * (hi - lo) || 1e-16;
+      /* as marcas ficam a meia janela das bordas, para o rótulo não
+         vazar pela direita do painel */
+      var marcas = [
+        { v: 2 - h / 2, r: '2−' + sciTxt(h / 2, 0) },
+        { v: 2, r: '2' },
+        { v: 2 + h / 2, r: '2+' + sciTxt(h / 2, 0) }
+      ];
+      /* expoente comum no título do eixo: os rótulos ficam curtos e não
+         colidem com o título girado */
+      var pico = Math.max(Math.abs(lo - mg), Math.abs(hi + mg));
+      var ey = pico > 0 ? Math.floor(Math.log10(pico)) : 0;
+      var uy = Math.pow(10, ey);
+      var g = G.eixos(cv, {
+        altura: p.A, limpar: false,
+        xmin: 2 - h, xmax: 2 + h, ymin: lo - mg, ymax: hi + mg,
+        rotX: 'x', rotY: 'p(x) / 10' + expo(ey), divY: 4, marcasX: marcas,
+        margem: { e: 62, d: 18, c: 12, b: 38 },
+        formataY: function (v) { return N.fmt(v / uy, 1); }
+      });
+      var ct = g.ct;
+      ct.save();
+      ct.beginPath(); ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0); ct.clip();
+
+      /* o chão de ruído: a faixa onde |p calculado| não distingue nada */
+      var piso = 0;
+      for (i = 0; i <= NP; i++) {
+        var dif = Math.abs(calc[i][1] - exato[i][1]);
+        if (dif > piso) piso = dif;
+      }
+      if (piso > 0) {
+        ct.fillStyle = 'rgba(155,34,56,0.10)';
+        ct.fillRect(g.x0, g.Y(piso), g.x1 - g.x0, g.Y(-piso) - g.Y(piso));
+      }
+
+      ct.strokeStyle = G.COR.clara; ct.lineWidth = 1;
+      ct.beginPath(); ct.moveTo(g.x0, g.Y(0)); ct.lineTo(g.x1, g.Y(0)); ct.stroke();
+
+      /* curva calculada por Horner nos coeficientes expandidos */
+      ct.beginPath();
+      for (i = 0; i <= NP; i++) {
+        if (i === 0) ct.moveTo(g.X(calc[i][0]), g.Y(calc[i][1]));
+        else ct.lineTo(g.X(calc[i][0]), g.Y(calc[i][1]));
+      }
+      ct.strokeStyle = G.COR.vinho; ct.lineWidth = 1.2; ct.stroke();
+
+      /* curva de referência, pela forma fatorada */
+      ct.beginPath();
+      for (i = 0; i <= NP; i++) {
+        if (i === 0) ct.moveTo(g.X(exato[i][0]), g.Y(exato[i][1]));
+        else ct.lineTo(g.X(exato[i][0]), g.Y(exato[i][1]));
+      }
+      ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2.2; ct.stroke();
+
+      ct.fillStyle = G.COR.azul;
+      ct.beginPath(); ct.arc(g.X(2), g.Y(0), 4, 0, 2 * Math.PI); ct.fill();
+      ct.restore();
+
+      rotulo(ct, 'fatorada', g.x1 - 8, g.y0 + 13, G.COR.tinta, 'right');
+      rotulo(ct, 'Horner nos coeficientes', g.x1 - 8, g.y0 + 28, G.COR.vinho, 'right');
+
+      /* largura em x da faixa em que a curva exata cabe dentro do ruído */
+      var larg = 0;
+      if (piso > 0) {
+        for (i = 0; i <= NP; i++) {
+          if (Math.abs(exato[i][1]) <= piso) {
+            var dd = Math.abs(exato[i][0] - 2);
+            if (dd > larg) larg = dd;
+          }
+        }
+      }
+      /* se a janela inteira coube dentro do ruído, o que medimos é a
+         janela, não o chão: dizer isso em vez de fingir precisão */
+      var satura = larg > 0.98 * h;
+      var nt = newton(c, 2.4, 1);
+      mostrar({
+        r: piso > 0 ? N.sci(piso, 1) : 'zero',
+        l: larg <= 0 ? 'nenhum'
+           : (satura ? 'maior que a janela' : '±' + N.sci(larg, 1)),
+        e: N.sci(Math.pow(EPS, 1 / m), 1),
+        n: N.sci(Math.abs(nt.x - 2), 1) + ' <small>(' + nt.passos + ' passos)</small>'
+      });
+
+      var texto;
+      if (m === 1) {
+        texto = 'Com raiz simples as duas curvas se sobrepõem em qualquer '
+          + 'janela, e a reta corta o eixo com inclinação bem definida: '
+          + '\\(p\'(2) \\ne 0\\). Newton converge em poucos passos e o erro '
+          + 'final é do tamanho de um ulp. Nada aqui é difícil.';
+      } else {
+        texto = 'A curva escura é a forma fatorada \\((x-2)^{' + m
+          + '}(x-5)(x+3)\\), que perto de \\(x=2\\) é exata, porque a '
+          + 'subtração \\(x-2\\) não perde nenhum bit. A vinho é o mesmo '
+          + 'polinômio avaliado por Horner nos coeficientes expandidos, '
+          + 'que é o que um programa de verdade recebe. Encolha a janela e '
+          + 'veja a vinho descolar da escura e virar ruído: a faixa '
+          + 'sombreada é a espessura desse ruído. Dentro dela nenhum '
+          + 'algoritmo distingue um ponto do outro, e é por isso que o erro '
+          + 'de Newton empaca em torno de \\(\\varepsilon^{1/'
+          + m + '}\\), e não em \\(\\varepsilon\\).';
+      }
+      saida.innerHTML = texto;
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {

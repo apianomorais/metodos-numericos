@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 8: Briot-Ruffini e raízes múltiplas | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221122">
+<script src="assets/js/comum.js?v=202611221122"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Erros numéricos e propagação">3</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula04.html" class="num" title="Aula 4: O método da bisseção">4</a>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <a href="aula06.html" class="num" title="Aula 6: Métodos iterativos de ponto fixo">6</a>
+      <span class="grupo">Polinômios</span>
+      <a href="aula07.html" class="num" title="Aula 7: Localização de raízes reais de polinômios">7</a>
+      <a href="aula08.html" class="num ativo" title="Aula 8: Briot-Ruffini e raízes múltiplas">8</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Horner duplo</a></li>
+    <li><a href="#s2">2. Newton para polinômios</a></li>
+    <li><a href="#s3">3. O ciclo final, e o teste de parada</a></li>
+    <li><a href="#s4">4. Deflação: um grau a menos por raiz</a></li>
+    <li><a href="#s5">5. As duas defesas, medidas</a></li>
+    <li><a href="#s6">6. Raízes múltiplas: o diagnóstico</a></li>
+    <li><a href="#s7">7. O polinômio de Wilkinson</a></li>
+    <li><a href="#s8">8. Bairstow, sem números complexos</a></li>
+    <li><a href="#s9">9. Modos normais de vibração</a></li>
+    <li><a href="#s10">10. O roteiro completo</a></li>
+    <li><a href="#s11">11. No Spyder</a></li>
+    <li><a href="#s12">12. Exercícios resolvidos</a></li>
+    <li><a href="#s13">13. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 8 · Raízes de polinômios</p>
+  <h1>Briot-Ruffini e raízes múltiplas</h1>
+  <p class="subtitulo">A aula 7 entregou as raízes isoladas, uma por intervalo. Falta refiná-las, extrair todas, e descobrir o que acontece quando duas raízes coincidem. É aqui que o polinômio deixa de ser um amigo e passa a cobrar pela conveniência dos coeficientes.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Avaliar \(p\) e \(p'\) numa única passada, e montar Newton barato para polinômios;</li>
+      <li>Reconhecer o ciclo em que Newton termina em precisão finita, e escrever um teste de parada que sobreviva a ele;</li>
+      <li>Deflacionar por Briot-Ruffini e saber por que o resto tem de ser nulo;</li>
+      <li>Medir, e não supor, o que valem as duas defesas clássicas contra o acúmulo de erro;</li>
+      <li>Diagnosticar a multiplicidade de uma raiz pela taxa de convergência;</li>
+      <li>Entender o polinômio de Wilkinson como um número de condição, e saber quando abandonar o polinômio.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Horner duplo</h2>
+
+  <p>Newton precisa de \(p(x)\) e de \(p'(x)\) em cada passo. Derivar o polinômio
+  analiticamente e avaliar as duas coisas separadamente funciona, mas desperdiça: a
+  recorrência de Horner, aplicada uma segunda vez sobre os seus próprios resultados
+  intermediários, entrega a derivada de brinde.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Horner duplo</span>
+    <p>Com \(p(x) = a_n x^n + \cdots + a_0\) e a recorrência de Horner \(b_k\), a segunda
+    passada</p>
+    <p>\[ d_n = b_n, \qquad d_k = b_k + d_{k+1}x_0 \]</p>
+    <p>dá \(p(x_0) = b_0\) e \(p'(x_0) = d_1\), ao custo de aproximadamente \(2n\)
+    multiplicações.</p>
+  </div>
+
+  <p>O motivo é a própria identidade da divisão. Se \(p(x) = (x-x_0)q(x) + p(x_0)\), então
+  derivando ambos os lados e pondo \(x = x_0\),</p>
+
+  <p>\[ p'(x_0) = q(x_0), \]</p>
+
+  <p>e \(q\) é justamente o quociente que a primeira passada de Horner já calculou. Avaliar
+  \(q\) em \(x_0\) é a segunda passada. A derivada não é um cálculo novo: é o quociente
+  avaliado no mesmo ponto.</p>
+
+  <p>O programa confere o resultado contra <code>np.polyval</code> e
+  <code>np.polyval(np.polyder(p))</code> em quatro pontos, e os valores coincidem em todas as
+  casas.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Newton para polinômios</h2>
+
+  <p>Com as duas quantidades na mão, Newton fica</p>
+
+  <p>\[ x_{k+1} = x_k - \frac{p(x_k)}{p'(x_k)}, \]</p>
+
+  <p>exatamente como na aula 5, só que cada iteração custa \(2n\) multiplicações e nada mais.
+  Para um polinômio de grau 20 isso é pouco mais de 40 operações por passo, e com convergência
+  quadrática a raiz sai em uma dúzia de passos.</p>
+
+  <p>A pergunta que a aula 7 deixou em aberto é de onde partir. A cota de Cauchy delimita bem,
+  mas é um lugar péssimo para começar, e a razão é geométrica: longe de todas as raízes
+  \(p \approx a_n x^n\) e \(p' \approx n a_n x^{n-1}\), de modo que o passo de Newton vale</p>
+
+  <p>\[ \Delta x \approx -\frac{x}{n}. \]</p>
+
+  <p>Isto é, \(x\) encolhe por um fator \((1 - 1/n)\) a cada iteração, geometricamente, e não
+  quadraticamente. O programa mede:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>grau</th><th>cota de Cauchy</th><th>passos de Newton partindo dela</th></tr>
+    <tr><td>5</td><td>275</td><td>29</td></tr>
+    <tr><td>8</td><td>\(1{,}18\times10^{5}\)</td><td>86</td></tr>
+    <tr><td>10</td><td>\(1{,}28\times10^{7}\)</td><td>151</td></tr>
+  </table>
+  </div>
+
+  <p>Cento e cinquenta passos para achar uma raiz de grau 10, quando doze bastariam a partir
+  de um chute decente. Delimitar e começar são problemas diferentes, e a aula 7 resolveu os
+  dois: o ponto médio de cada intervalo isolado por Sturm é um chute decente por
+  construção.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. O ciclo final, e o teste de parada</h2>
+
+  <p>Antes de deflacionar qualquer coisa, há uma armadilha discreta a resolver. Tome
+  \(p(x) = (x-1)(x-2)\cdots(x-8)\), expandido, e rode Newton a partir de \(x_0 = 0{,}901\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(k\)</th><th>\(x_k\)</th><th>\(p(x_k)\) calculado</th><th>\(\Delta x\)</th></tr>
+    <tr><td>3</td><td>0,99999787006710428</td><td>\(+1{,}07\times10^{-2}\)</td><td>\(+2{,}13\times10^{-6}\)</td></tr>
+    <tr><td>4</td><td>0,99999999998823774</td><td>\(+5{,}93\times10^{-8}\)</td><td>\(+1{,}18\times10^{-11}\)</td></tr>
+    <tr><td>5</td><td>1,00000000000000200</td><td>\(+7{,}28\times10^{-12}\)</td><td>\(+1{,}44\times10^{-15}\)</td></tr>
+    <tr><td>6</td><td>1,00000000000000355</td><td>\(-1{,}46\times10^{-11}\)</td><td>\(-2{,}89\times10^{-15}\)</td></tr>
+    <tr><td>7</td><td>1,00000000000000067</td><td>\(-1{,}46\times10^{-11}\)</td><td>\(-2{,}89\times10^{-15}\)</td></tr>
+    <tr><td>8</td><td>0,99999999999999778</td><td>\(+1{,}46\times10^{-11}\)</td><td>\(+2{,}89\times10^{-15}\)</td></tr>
+  </table>
+  </div>
+
+  <p>A partir de \(k = 6\) a iteração entra em ciclo. Ela alterna entre dois vizinhos de 1,
+  com \(p\) calculado trocando de sinal, e nenhum dos dois pontos é melhor que o outro.
+  Newton não converge: ele orbita.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A amplitude do ciclo não é um ulp</span>
+    <p>Um teste de parada do tipo \(|\Delta x| &lt; 10^{-15}|x|\) <strong>nunca dispara</strong>
+    aqui, porque a amplitude do ciclo vale</p>
+    <p>\[ |\Delta x| \approx \frac{|p \text{ calculado}|}{|p'(r)|}
+       = \frac{1{,}46\times10^{-11}}{5040} = 2{,}89\times10^{-15}, \]</p>
+    <p>treze vezes o ulp de 1. O numerador é o chão de ruído de \(p\), que não pode ser menor
+    que o arredondamento da própria soma de Horner,
+    \(\varepsilon\sum|a_i| = 8{,}1\times10^{-11}\) (a soma dos módulos aqui é \(9! =
+    362\,880\)). O denominador é a inclinação com que esse ruído se traduz em incerteza
+    de \(x\).</p>
+  </div>
+
+  <p>O programa imprime as duas quantidades e verifica que o produto fecha: a amplitude
+  prevista e a medida coincidem em todas as casas. E o teste de parada que resulta disso tem
+  duas condições, não uma:</p>
+
+  <pre><code>pv = abs(p(x))
+if pv &lt; pmelhor:
+    melhor, pmelhor = x, pv            # guarda o melhor ponto visto
+elif abs(dx) &lt; 1e-8 * max(1.0, abs(x)):
+    break                              # ja estamos no chao do arredondamento</code></pre>
+
+  <p>A primeira linha guarda o melhor ponto medido por \(|p|\), em vez de devolver o último.
+  A segunda condição é a que me custou uma tarde: sem ela, a saída por "\(|p|\) parou de
+  melhorar" dispara no meio da aproximação, quando a iteração ainda está longe e \(|p|\)
+  oscila por outros motivos. O programa então deflaciona uma raiz errada, e todas as raízes
+  seguintes saem erradas. Num teste com polinômios de grau 12 o erro final chegou a
+  \(0{,}48\), e a causa não era a deflação: era o teste de parada.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. Deflação: um grau a menos por raiz</h2>
+
+  <p>Achada uma raiz \(\xi_1\), o polinômio fatora como \(p(x) = (x-\xi_1)q(x)\), e as raízes
+  que faltam são as de \(q\), que tem grau \(n-1\). Repetindo, extraem-se todas, e o grau 1
+  que sobra se resolve de cabeça. Esta é a <strong>deflação polinomial</strong>.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Briot-Ruffini</span>
+    <p>Os coeficientes do quociente saem da mesma recorrência de Horner:</p>
+    <p>\[ b_n = a_n, \qquad b_k = a_k + b_{k+1}\xi_1, \]</p>
+    <p>e o último termo é o resto, que deve ser <strong>numericamente nulo</strong> se
+    \(\xi_1\) for de fato raiz. O resto é o conferidor de graça da deflação: imprima-o
+    sempre.</p>
+  </div>
+
+  <p>Com as cinco raízes do nosso polinômio de teste \(x^5 - 3x^4 - 5x^3 + 15x^2 + 4x - 12\),
+  extraídas a partir dos intervalos de Sturm da aula 7, o programa obtém erro zero em todas
+  as cinco e resto exatamente nulo em todas as deflações. É o caso fácil, e vale ver um caso
+  fácil funcionando antes de atacar o difícil.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. As duas defesas, medidas</h2>
+
+  <p>O perigo da deflação é conhecido. Cada raiz encontrada carrega um pequeno erro, esse
+  erro contamina os coeficientes de \(q\), e a raiz seguinte é procurada num polinômio já
+  ligeiramente errado. Os livros recomendam duas defesas:</p>
+
+  <ol>
+    <li><strong>Polir no original.</strong> Use o polinômio deflacionado apenas para obter uma
+    aproximação, e refine-a com algumas iterações de Newton no polinômio
+    <em>original</em>.</li>
+    <li><strong>Deflacionar em ordem crescente de módulo.</strong> Extrair primeiro as raízes
+    de menor módulo seria numericamente mais estável que a ordem inversa.</li>
+  </ol>
+
+  <p>As duas recomendações estão na direção certa. A questão é quanto elas valem, e isso é
+  uma pergunta empírica, não uma questão de autoridade. Medindo em 300 polinômios de grau 10
+  com raízes sorteadas em \([-5,5]\), e não num exemplo escolhido a dedo:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>defesa</th><th>vence em</th><th>razão mediana</th><th>média geométrica</th></tr>
+    <tr><td>ordem crescente contra decrescente</td><td>161 de 300</td><td>1,02</td><td>1,06</td></tr>
+    <tr><td>polir contra não polir</td><td>175 de 300</td><td>1,20</td><td>1,35</td></tr>
+  </table>
+  </div>
+
+  <p>Para um polinômio típico, portanto, a ordem da deflação é quase irrelevante: ela acerta
+  54% das vezes, pouco acima de uma moeda, com ganho mediano de 2%. E polir rende uns 20% a
+  35%, o que é real mas longe de resolver o problema.</p>
+
+  <p>Onde as duas defesas realmente se separam é num polinômio mal condicionado. Com
+  \(W(x) = (x-1)(x-2)\cdots(x-10)\), e Newton partindo de cada raiz exata mais \(0{,}05\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th></th><th>ordem crescente</th><th>ordem decrescente</th></tr>
+    <tr><td>sem polimento</td><td>\(1{,}18\times10^{-10}\)</td><td>\(1{,}36\times10^{-9}\)</td></tr>
+    <tr><td>com polimento</td><td>\(2{,}09\times10^{-10}\)</td><td>\(1{,}30\times10^{-10}\)</td></tr>
+  </table>
+  </div>
+
+  <div class="bloco ex">
+    <span class="rotulo">As duas defesas não se somam</span>
+    <p>Sem polir, a ordem crescente é cerca de dez vezes melhor, e a recomendação clássica se
+    confirma. Com polimento, a ordem deixa de importar: o refino no polinômio original apaga
+    o que a deflação estragou, e as duas colunas empatam.</p>
+    <p>A segunda defesa, portanto, não reforça a primeira: ela a <strong>substitui</strong>.
+    Se você for polir, pode extrair as raízes na ordem que quiser.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Raízes múltiplas: o diagnóstico</h2>
+
+  <p>Até aqui as raízes eram simples. Quando \(p(x) = (x-r)^m g(x)\) com \(m \ge 2\), dois
+  problemas aparecem ao mesmo tempo: Newton perde a convergência quadrática, e a raiz deixa
+  de ser localizável com precisão.</p>
+
+  <p>O primeiro problema tem uma assinatura mensurável. Perto de uma raiz de multiplicidade
+  \(m\), a derivada também se anula, e a expansão de Newton dá</p>
+
+  <p>\[ x_{k+1} - r \approx \frac{m-1}{m}(x_k - r). \]</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Diagnóstico de multiplicidade</span>
+    <p>A convergência passa de quadrática a linear, com razão</p>
+    <p>\[ L = \lim_{k\to\infty}\frac{\Delta x_{k+1}}{\Delta x_k} = \frac{m-1}{m},
+       \qquad\text{logo}\qquad m = \frac{1}{1-L}. \]</p>
+    <p>A razão dos incrementos de Newton, que o programa já tem na mão, denuncia a
+    multiplicidade sem que ninguém precise fatorar nada.</p>
+  </div>
+
+  <p>Medindo em \(p(x) = (x-2)^m(x-5)(x+3)\), a partir de \(x_0 = 2{,}4\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(m\)</th><th>\(L\) medido</th><th>\((m-1)/m\)</th><th>\(1/(1-L)\)</th><th>passos</th></tr>
+    <tr><td>1</td><td>não há</td><td>0,0000</td><td>1</td><td>4</td></tr>
+    <tr><td>2</td><td>0,5000</td><td>0,5000</td><td>2</td><td>26</td></tr>
+    <tr><td>3</td><td>0,6666</td><td>0,6667</td><td>3</td><td>27</td></tr>
+    <tr><td>4</td><td>0,7500</td><td>0,7500</td><td>4</td><td>53</td></tr>
+  </table>
+  </div>
+
+  <p>Para \(m = 1\) a convergência é rápida demais para haver razão a medir, e é exatamente
+  isso que denuncia a raiz simples: menos de quatro passos acima do piso de ruído. Para
+  \(m\) de 2 a 4 o \(L\) medido bate com \((m-1)/m\) na quarta casa, e a estimativa
+  \(1/(1-L)\) arredondada acerta sempre.</p>
+
+  <p>Na prática há um cuidado: a razão só é constante na fase <em>limpa</em> da iteração.
+  Depois que os incrementos chegam ao chão do arredondamento, eles passam a ter sinal
+  aleatório e a razão vira lixo. O programa descarta os passos abaixo de \(10^{-7}\) e tira a
+  mediana do terço final dos que sobram.</p>
+
+  <h3>O segundo problema: a raiz deixa de existir numericamente</h3>
+
+  <p>Perto de uma raiz de multiplicidade \(m\), \(p \sim (x-r)^m\). O gráfico encosta no eixo
+  em vez de cruzá-lo, e o valor calculado de \(p\) cai abaixo do ruído do arredondamento a
+  uma distância da ordem de \(\varepsilon^{1/m}\). Dentro dessa faixa, nenhum algoritmo
+  distingue um ponto do outro, porque <strong>a informação não está lá</strong>.</p>
+
+  <div data-widget="multiplicidade"></div>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(m\)</th><th>erro final medido</th><th>\(\varepsilon^{1/m}\)</th><th>razão</th></tr>
+    <tr><td>2</td><td>\(2{,}19\times10^{-8}\)</td><td>\(1{,}49\times10^{-8}\)</td><td>1,47</td></tr>
+    <tr><td>3</td><td>\(8{,}14\times10^{-6}\)</td><td>\(6{,}06\times10^{-6}\)</td><td>1,34</td></tr>
+    <tr><td>4</td><td>\(2{,}31\times10^{-4}\)</td><td>\(1{,}22\times10^{-4}\)</td><td>1,89</td></tr>
+    <tr><td>5</td><td>\(1{,}28\times10^{-3}\)</td><td>\(7{,}40\times10^{-4}\)</td><td>1,72</td></tr>
+  </table>
+  </div>
+
+  <p>Uma raiz quádrupla em <code>float64</code> não pode ser localizada melhor que na quarta
+  casa decimal. E a razão não é uma constante: varrendo 40 chutes iniciais entre 2,05 e 3,0
+  para \(m = 4\), o erro final varia de \(9{,}4\times10^{-6}\) a \(2{,}9\times10^{-4}\), com
+  \(\varepsilon^{1/4}\) no meio dessa faixa. Isto é, \(\varepsilon^{1/m}\) é a
+  <em>escala</em> da incerteza, não um limite que se possa citar com três dígitos.</p>
+
+  <h3>Newton modificado</h3>
+
+  <p>Conhecido \(m\), a cura é direta: multiplicar o passo por \(m\) cancela o fator
+  \((m-1)/m\) e devolve a convergência quadrática,</p>
+
+  <p>\[ x_{k+1} = x_k - m\,\frac{p(x_k)}{p'(x_k)}. \]</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(m\)</th><th>passos, simples</th><th>erro</th><th>passos, modificado</th><th>erro</th></tr>
+    <tr><td>2</td><td>25</td><td>\(2{,}19\times10^{-8}\)</td><td>12</td><td>\(5{,}43\times10^{-11}\)</td></tr>
+    <tr><td>3</td><td>28</td><td>\(8{,}14\times10^{-6}\)</td><td>5</td><td>\(8{,}14\times10^{-7}\)</td></tr>
+    <tr><td>4</td><td>54</td><td>\(2{,}31\times10^{-4}\)</td><td>3</td><td>\(2{,}18\times10^{-6}\)</td></tr>
+  </table>
+  </div>
+
+  <p>Menos passos <em>e</em> mais precisão, porque a iteração chega perto antes de o ruído
+  dominar. Isso não contradiz o limite \(\varepsilon^{1/m}\) da seção anterior: o limite diz
+  onde \(p\) deixa de carregar informação, não que o ponto de parada tenha de ser ruim. Quem
+  atravessa a região depressa pode aterrissar num ponto melhor que a mediana, e é o que
+  acontece aqui.</p>
+
+  <p>Há uma ressalva de robustez. Varrendo os mesmos 40 chutes, o passo multiplicado não
+  perdeu nenhum, com mediana trinta vezes melhor. Mas isso depende do resguardo da seção 3,
+  que guarda o melhor ponto visto: um Newton modificado ingênuo, que aceita o último ponto,
+  diverge em parte desses chutes, porque o passo multiplicado atravessa a raiz quando ainda
+  está longe.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. O polinômio de Wilkinson</h2>
+
+  <p>Tudo nesta aula se apoia nos coeficientes. Vale perguntar o quanto eles merecem essa
+  confiança, e a resposta, descoberta por James Wilkinson nos anos 1960, é desconfortável.</p>
+
+  <p>Tome \(W(x) = (x-1)(x-2)\cdots(x-10)\), cujas raízes não poderiam ser mais bem
+  comportadas: dez inteiros, separados por distância 1. Perturbe apenas o coeficiente de
+  \(x^9\), que vale \(-55\), por um fator \((1+\delta)\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(\delta\)</th><th>maior deslocamento de raiz</th><th>raízes complexas</th></tr>
+    <tr><td>\(10^{-10}\)</td><td>\(7{,}32\times10^{-5}\)</td><td>0</td></tr>
+    <tr><td>\(10^{-8}\)</td><td>\(7{,}33\times10^{-3}\)</td><td>0</td></tr>
+    <tr><td>\(10^{-7}\)</td><td>\(7{,}39\times10^{-2}\)</td><td>0</td></tr>
+    <tr><td>\(10^{-6}\)</td><td>\(7{,}29\times10^{-1}\)</td><td>4</td></tr>
+    <tr><td>\(10^{-5}\)</td><td>\(1{,}56\)</td><td>4</td></tr>
+  </table>
+  </div>
+
+  <p>Mexer na décima casa de um coeficiente move uma raiz na quinta. A amplificação é de cinco
+  ordens de grandeza, e isso não é um defeito de <code>np.roots</code>: é uma propriedade do
+  problema, e tem fórmula fechada.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Condicionamento de uma raiz em relação a um coeficiente</span>
+    <p>Derivando \(p(x_i) = 0\) implicitamente em relação a \(a_k\),</p>
+    <p>\[ \frac{\partial x_i}{\partial a_k} = -\frac{x_i^{\,k}}{p'(x_i)}. \]</p>
+    <p>O numerador cresce como uma potência da raiz, e o denominador é pequeno quando as
+    raízes estão próximas umas das outras. As duas coisas conspiram.</p>
+  </div>
+
+  <p>Aplicando a fórmula com \(k = 9\), e lembrando que a perturbação absoluta é
+  \(\delta\,|a_9| = 55\delta\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>raiz</th><th>amplificação \(|x^9 a_9/p'|\)</th><th>deslocamento previsto para \(\delta = 10^{-7}\)</th></tr>
+    <tr><td>1</td><td>\(1{,}52\times10^{-4}\)</td><td>\(1{,}52\times10^{-11}\)</td></tr>
+    <tr><td>2</td><td>\(6{,}98\times10^{-1}\)</td><td>\(6{,}98\times10^{-8}\)</td></tr>
+    <tr><td>5</td><td>\(3{,}73\times10^{4}\)</td><td>\(3{,}73\times10^{-3}\)</td></tr>
+    <tr><td>8</td><td>\(7{,}32\times10^{5}\)</td><td>\(7{,}32\times10^{-2}\)</td></tr>
+    <tr><td>9</td><td>\(5{,}29\times10^{5}\)</td><td>\(5{,}29\times10^{-2}\)</td></tr>
+    <tr><td>10</td><td>\(1{,}52\times10^{5}\)</td><td>\(1{,}52\times10^{-2}\)</td></tr>
+  </table>
+  </div>
+
+  <p>A previsão para a pior raiz, a de valor 8, é \(7{,}32\times10^{-2}\). O deslocamento
+  medido é \(7{,}39\times10^{-2}\): concordam em 1%. E a raiz 1, a mais bem condicionada da
+  lista, se move \(10^{9}\) vezes menos que a raiz 8, no mesmo polinômio e sob a mesma
+  perturbação. Condicionamento é propriedade de cada raiz, não do polinômio.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A teoria prevê a própria falência</span>
+    <p>A fórmula é de primeira ordem, e vale enquanto o deslocamento for pequeno em relação à
+    distância entre raízes vizinhas, que aqui é 1. Quando o deslocamento chega perto de meia
+    unidade, duas raízes se encontram, e um par de raízes reais que colide só pode sair do
+    encontro como par complexo conjugado.</p>
+    <p>É o que a primeira tabela mostra em \(\delta = 10^{-6}\): deslocamento 0,73 e quatro
+    raízes complexas. O ponto em que a teoria para de funcionar foi previsto pela própria
+    teoria.</p>
+  </div>
+
+  <h3>E o grau 20, do experimento original?</h3>
+
+  <p>Wilkinson usou \((x-1)\cdots(x-20)\), e a reação instintiva é reproduzir isso. Em
+  <code>float64</code>, não dá:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>grau</th><th>maior coeficiente</th><th>erro ao guardá-lo em float64</th><th>erro das raízes, sem perturbar nada</th></tr>
+    <tr><td>10</td><td>\(1{,}28\times10^{7}\)</td><td>0</td><td>0</td></tr>
+    <tr><td>20</td><td>\(1{,}38\times10^{19}\)</td><td>\(1{,}27\times10^{-16}\)</td><td>0,0698</td></tr>
+  </table>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">O experimento clássico mede duas vezes o mesmo fenômeno</span>
+    <p>No grau 20 o maior coeficiente vale \(1{,}38\times10^{19}\), acima de \(2^{53}
+    \approx 9\times10^{15}\), de modo que ele <strong>não é representável</strong>. Escrever o
+    polinômio já o perturba, e <code>np.roots</code> erra uma das raízes em 0,07 sem que
+    ninguém tenha perturbado coisa alguma.</p>
+    <p>No grau 10 os coeficientes cabem exatos, o erro de representação é zero, o erro das
+    raízes é zero, e a medida isola o efeito da perturbação. Por isso esta aula usa o grau 10:
+    não por timidez, mas porque é o maior grau em que o experimento ainda <em>mede</em>
+    alguma coisa.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. Bairstow, sem números complexos</h2>
+
+  <p>Extraídas as raízes reais, sobra um polinômio de grau par sem nenhuma raiz real. As que
+  faltam são pares complexos conjugados, e cada par corresponde a um fator quadrático real</p>
+
+  <p>\[ x^2 - ux - v. \]</p>
+
+  <p>A ideia de Bairstow é procurar \(u\) e \(v\) em vez de procurar a raiz. Dividindo \(p\)
+  por esse fator sobra um resto linear, \(c_1(u,v)\,x + c_2(u,v)\), e anular os dois
+  coeficientes é um sistema de duas equações em duas incógnitas, resolvido por Newton em duas
+  variáveis. Todas as contas são reais.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Onde Bairstow cai</span>
+    <p>Para \(p(x) = (x^2+1)(x-2)(x+3) = x^4 + x^3 - 5x^2 + x - 6\), partindo de
+    \((u,v) = (0{,}5;\ 0{,}5)\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>palpite \((u,v)\)</th><th>iterações</th><th>fator encontrado</th><th>raízes do fator</th></tr>
+      <tr><td>\((0{,}5;\ 0{,}5)\)</td><td>25</td><td>\(x^2+x-6\)</td><td>\(-3\) e \(2\), reais</td></tr>
+      <tr><td>\((-1;\ -2)\)</td><td>7</td><td>\(x^2+1\)</td><td>\(\pm i\)</td></tr>
+      <tr><td>\((0;\ 0)\)</td><td>6</td><td>\(x^2+1\)</td><td>\(\pm i\)</td></tr>
+      <tr><td>\((2;\ -1)\)</td><td>31</td><td>\(x^2+x-6\)</td><td>\(-3\) e \(2\), reais</td></tr>
+    </table>
+    </div>
+    <p>Bairstow acha <strong>um</strong> fator quadrático, o da bacia onde caiu o palpite, e
+    não há como escolher qual de antemão. Partindo de \((0{,}5;\ 0{,}5)\) ele devolve as duas
+    raízes reais, e o par complexo fica no quociente. A fraqueza é a mesma de Newton:
+    implementações robustas testam vários pontos iniciais.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. Modos normais de vibração</h2>
+
+  <p>Três massas iguais \(m\), ligadas por quatro molas idênticas de constante \(k\) entre
+  paredes fixas, obedecem a</p>
+
+  <p>\[ m\ddot{x}_i = k(x_{i-1} - 2x_i + x_{i+1}). \]</p>
+
+  <p>Procurando soluções \(x_i = A_i e^{i\omega t}\), chega-se ao problema de autovalores cuja
+  equação secular é</p>
+
+  <p>\[ \lambda^3 - 6\lambda^2 + 10\lambda - 4 = 0, \qquad \lambda = \frac{m\omega^2}{k}. \]</p>
+
+  <p>Antes de resolver, a física já diz o que esperar: as três raízes devem ser reais e
+  positivas, porque uma raiz negativa daria \(\omega\) imaginário, isto é, um modo que cresce
+  exponencialmente, o que é impossível num sistema conservativo com molas restauradoras. E a
+  regra de Descartes da aula 7 confirma isso de imediato: a sequência \((+,-,+,-)\) tem três
+  variações, e \(p(-x)\) não tem nenhuma. Três raízes positivas, zero negativas.</p>
+
+  <p>Resolvendo pelos três caminhos:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>modo</th><th>deflação desta aula</th><th><code>np.linalg.eigvalsh</code></th><th>fechado, \(4\sin^2\!\frac{j\pi}{8}\)</th></tr>
+    <tr><td>1</td><td>0,58578643762690</td><td>0,58578643762690</td><td>0,58578643762690</td></tr>
+    <tr><td>2</td><td>2,00000000000000</td><td>2,00000000000000</td><td>2,00000000000000</td></tr>
+    <tr><td>3</td><td>3,41421356237309</td><td>3,41421356237309</td><td>3,41421356237309</td></tr>
+  </table>
+  </div>
+
+  <p>Coincidem em doze casas, com \(\omega/\omega_0 = 0{,}765\), \(1{,}414\) e \(1{,}848\).
+  Mas os caminhos não envelhecem igual. Para \(N\) massas em cadeia, o polinômio
+  característico tem grau \(N\), e seus coeficientes crescem como os de Wilkinson:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(N\)</th><th>maior coeficiente</th><th>erro via <code>np.poly</code> + <code>np.roots</code></th><th>erro via <code>eigvalsh</code></th></tr>
+    <tr><td>3</td><td>\(1{,}0\times10^{1}\)</td><td>\(9{,}3\times10^{-15}\)</td><td>\(2{,}2\times10^{-16}\)</td></tr>
+    <tr><td>8</td><td>\(7{,}9\times10^{2}\)</td><td>\(6{,}4\times10^{-12}\)</td><td>\(4{,}4\times10^{-16}\)</td></tr>
+    <tr><td>12</td><td>\(3{,}2\times10^{4}\)</td><td>\(2{,}6\times10^{-9}\)</td><td>\(7{,}2\times10^{-16}\)</td></tr>
+    <tr><td>16</td><td>\(1{,}3\times10^{6}\)</td><td>\(2{,}5\times10^{-6}\)</td><td>\(2{,}2\times10^{-15}\)</td></tr>
+    <tr><td>24</td><td>\(2{,}3\times10^{9}\)</td><td>\(1{,}5\times10^{-1}\)</td><td>\(1{,}3\times10^{-15}\)</td></tr>
+  </table>
+  </div>
+
+  <div class="bloco ex">
+    <span class="rotulo">Saber quando não usar polinômios</span>
+    <p>A rota polinomial perde cerca de três casas a cada quatro massas e chega a \(N = 24\)
+    sem nenhum dígito confiável. A rota matricial, que nunca expande o polinômio
+    característico, fica no nível do arredondamento em todos os casos.</p>
+    <p>O problema não é o método de raízes: é a expansão. Os coeficientes de um polinômio são
+    uma representação numericamente frágil das suas raízes, e para uma cadeia de 24 massas a
+    melhor coisa a fazer com o polinômio característico é não escrevê-lo. Uma aula sobre
+    raízes de polinômios que não dissesse isso estaria incompleta.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. O roteiro completo</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Reunindo as aulas 7 e 8</span>
+    <ol>
+      <li><strong>Delimitar.</strong> Cotas de Cauchy, Lagrange ou Laguerre-Thibault definem a
+      região de busca, e só isso.</li>
+      <li><strong>Contar.</strong> Descartes para triagem rápida, Sturm para a contagem
+      exata.</li>
+      <li><strong>Isolar.</strong> Subdivisão guiada por Sturm até uma raiz por intervalo. É
+      daqui que saem os chutes iniciais, e não da cota.</li>
+      <li><strong>Refinar.</strong> Newton com Horner duplo, com o teste de parada da seção 3,
+      ou <code>brentq</code> quando a robustez importar mais que a velocidade.</li>
+      <li><strong>Diagnosticar.</strong> Estimar a multiplicidade pela razão dos incrementos e
+      aplicar Newton modificado se \(m &gt; 1\).</li>
+      <li><strong>Deflacionar.</strong> Briot-Ruffini, sempre polindo cada raiz no polinômio
+      original e sempre conferindo o resto.</li>
+      <li><strong>Completar.</strong> Bairstow para os pares complexos restantes, com vários
+      palpites iniciais.</li>
+      <li><strong>Conferir.</strong> O total de raízes tem de bater com o grau, e o resultado
+      com <code>np.roots</code>.</li>
+      <li><strong>Reconsiderar.</strong> Se o polinômio veio de uma matriz, pule tudo isso e
+      use <code>eigvalsh</code>.</li>
+    </ol>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/deflacao.py">
+      <span class="numero">Programa</span>
+      <h3>deflacao.py</h3>
+      <p>Horner duplo conferido contra o numpy, o ciclo final de Newton exibido iteração por
+      iteração, a extração completa ligada ao Sturm da aula 7, as duas defesas medidas em 300
+      polinômios, o diagnóstico de multiplicidade, Wilkinson comparado com o número de
+      condição, Bairstow, e os modos normais pelos três caminhos.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>Horner duplo bate com <code>np.polyval</code> e <code>np.polyder</code> em quatro
+    pontos, verificado por <code>assert</code>.</li>
+    <li>O quociente de Briot-Ruffini multiplicado de volta reconstrói \(p\) exatamente, e o
+    resto em raiz exata é zero.</li>
+    <li>A amplitude do ciclo final de Newton coincide com \(|p|/|p'|\) em todas as casas.</li>
+    <li>As cinco raízes do polinômio da aula 7 saem com erro zero.</li>
+    <li>O \(L\) medido bate com \((m-1)/m\) e \(1/(1-L)\) acerta \(m\) nos quatro casos.</li>
+    <li>O deslocamento de Wilkinson concorda com a previsão do número de condição em 1%.</li>
+    <li>Bairstow reproduz o exemplo do livro em 25 iterações.</li>
+    <li>Os três autovalores coincidem com <code>eigvalsh</code> e com a solução fechada em
+    \(4{,}4\times10^{-16}\).</li>
+  </ul>
+
+  <p>O programa importa <code>isolar</code> de <code>polinomios.py</code>, da aula 7. Se os
+  dois arquivos estiverem na mesma pasta, ele usa o Sturm para gerar os chutes; se não,
+  avisa e usa uma lista fixa.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s12">12. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 8.1 · Horner duplo à mão</span>
+    <p>Para \(p(x) = 2x^4 - 3x^3 + x - 5\) e \(x_0 = 2\), obtenha \(p(2)\) e \(p'(2)\) pelo
+    dispositivo de Briot-Ruffini, e conte as multiplicações.</p>
+
+    <p><strong>Primeira passada.</strong> Os coeficientes, incluindo o zero de \(x^2\), são
+    \(2,\ -3,\ 0,\ 1,\ -5\). Com \(x_0 = 2\):</p>
+
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th></th><th>2</th><th>\(-3\)</th><th>0</th><th>1</th><th>\(-5\)</th></tr>
+      <tr><td>\(\times 2\)</td><td></td><td>4</td><td>2</td><td>4</td><td>10</td></tr>
+      <tr><td>\(b\)</td><td>2</td><td>1</td><td>2</td><td>5</td><td><strong>5</strong></td></tr>
+    </table>
+    </div>
+
+    <p>Logo \(p(2) = 5\), e o quociente da divisão por \((x-2)\) é
+    \(q(x) = 2x^3 + x^2 + 2x + 5\).</p>
+
+    <p><strong>Segunda passada</strong>, agora sobre \(q\), com o mesmo \(x_0 = 2\):</p>
+
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th></th><th>2</th><th>1</th><th>2</th><th>5</th></tr>
+      <tr><td>\(\times 2\)</td><td></td><td>4</td><td>10</td><td>24</td></tr>
+      <tr><td>\(d\)</td><td>2</td><td>5</td><td>12</td><td><strong>29</strong></td></tr>
+    </table>
+    </div>
+
+    <p>Logo \(p'(2) = q(2) = 29\).</p>
+
+    <p><strong>Conferindo analiticamente.</strong> \(p'(x) = 8x^3 - 9x^2 + 1\), e
+    \(p'(2) = 64 - 36 + 1 = 29\). Confere.</p>
+
+    <p><strong>A contagem.</strong> A primeira passada custa 4 multiplicações, a segunda 3,
+    total 7. Pelo caminho analítico são 4 para montar os coeficientes de \(p'\) (cada
+    \(a_i\) vezes o seu expoente), 4 para \(p(2)\) por Horner e 3 para \(p'(2)\) por Horner:
+    11 ao todo, mais a construção de um segundo vetor de coeficientes.</p>
+
+    <p>A economia é real mas modesta, e não é o principal. O que o Horner duplo entrega de
+    verdade é o <strong>quociente</strong>, que é exatamente o que a deflação da seção 4 vai
+    consumir, e a dispensa de carregar uma segunda lista de coeficientes pela iteração
+    inteira.</p>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 8.2 · Diagnosticando uma multiplicidade tripla</span>
+    <p>Para \(p(x) = (x-1)^3(x+2)^2(x-4)\), expanda, aplique Newton puro perto de cada raiz e
+    identifique as três multiplicidades pela razão dos incrementos.</p>
+
+    <p><strong>A expansão.</strong> \(p(x) = x^6 - 3x^5 - 9x^4 + 19x^3 + 12x^2 - 36x + 16\),
+    obtida com <code>np.poly([1,1,1,-2,-2,4])</code>. Descartes conta quatro variações de
+    sinal em \(p(x)\) e duas em \(p(-x)\), e aqui as duas cotas são atingidas: com
+    multiplicidade há quatro raízes positivas (1, 1, 1, 4) e duas negativas
+    (\(-2\), \(-2\)).</p>
+
+    <p><strong>Perto de \(x = 1\).</strong> Partindo de \(x_0 = 1{,}3\), os incrementos caem
+    por um fator que se estabiliza em \(L = 0{,}6667\), de modo que \(1/(1-L) = 3\):
+    multiplicidade três. São 28 passos, e a raiz para a \(2{,}8\times10^{-6}\) do valor
+    exato, abaixo de \(\varepsilon^{1/3} = 6{,}1\times10^{-6}\) e muito acima de
+    \(\varepsilon\).</p>
+
+    <p><strong>Perto de \(x = -2\).</strong> Partindo de \(x_0 = -1{,}8\), a razão se
+    estabiliza em \(L = 0{,}5000\), de modo que \(m = 2\). São 51 passos e erro final
+    \(5{,}0\times10^{-9}\), contra \(\varepsilon^{1/2} = 1{,}5\times10^{-8}\).</p>
+
+    <p><strong>Perto de \(x = 4\).</strong> Partindo de \(x_0 = 4{,}2\), Newton converge em
+    cinco passos e o erro final é zero. Aqui a razão medida vale \(0{,}0278\), e vale repetir
+    o cuidado da seção 6: numa raiz simples a razão não tende a nada, ela despenca. O que
+    denuncia \(m = 1\) é a combinação de poucos passos com razão próxima de zero, e não um
+    valor estável.</p>
+
+    <p><strong>O que fazer com o diagnóstico.</strong> Aplicando Newton modificado com
+    \(m = 3\), a raiz tripla sai em 13 passos em vez de 29, com erro
+    \(9{,}1\times10^{-8}\) em vez de \(2{,}8\times10^{-6}\): trinta vezes melhor, e ainda a
+    oito ordens de grandeza de \(\varepsilon\). Nenhum truque recupera informação que os
+    coeficientes não carregam.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s13">13. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>8.1</b> Implemente o dispositivo de Briot-Ruffini e aplique-o a
+      \(p(x) = 2x^4 - 3x^3 + x - 5\) em \(x_0 = 2\), reproduzindo as duas tabelas do exercício
+      resolvido 8.1. Depois conte as multiplicações do seu código e compare com a contagem
+      feita lá.</li>
+
+      <li><b>8.2</b> Para \(p(x) = (x-1)(x-2)(x-3)(x-4)(x-5)\), expandido, extraia todas as
+      raízes por deflação <em>sem</em> o polimento final, depois <em>com</em> polimento, e
+      tabule o erro de cada raiz nas duas versões. Teste também a ordem inversa. Os ganhos que
+      você mede batem com os da seção 5? Se não, qual diferença no seu experimento explica a
+      discordância?</li>
+
+      <li><b>8.3</b> Reproduza o ciclo final da seção 3 com outro polinômio e outra raiz.
+      Meça a amplitude do ciclo, calcule \(|p|/|p'(r)|\), e verifique a previsão. Depois
+      implemente o teste de parada ingênuo \(|\Delta x| &lt; 10^{-15}|x|\) e conte quantas
+      iterações ele gasta antes de bater no limite máximo.</li>
+
+      <li><b>8.4</b> Considere \(p(x) = (x-1)^3(x+2)^2(x-4)\). Para cada raiz, estime \(m\)
+      pela razão dos incrementos, refaça com Newton modificado, e compare iterações e precisão
+      final. Em seguida divida \(p\) por \(\mathrm{mdc}(p,p')\) e verifique que as raízes do
+      quociente são todas simples e saem com precisão de um ulp.</li>
+
+      <li><b>8.5</b> Reproduza o experimento de Wilkinson no grau 20. Perturbe o coeficiente
+      de \(x^{19}\) somando \(2^{-23}\), a perturbação original. Quantas raízes se tornaram
+      complexas, e qual o maior deslocamento? Faça o gráfico no plano complexo com as raízes
+      originais e as perturbadas. Depois meça o erro das raízes do polinômio
+      <em>não perturbado</em> e discuta o que isso faz com a sua conclusão.</li>
+
+      <li><b>8.6</b> Para o polinômio de Wilkinson de grau 10, calcule a amplificação
+      \(|x_i^k/p'(x_i)|\) para todos os pares \((i,k)\) e faça um mapa de calor. Qual
+      coeficiente é o mais perigoso? E qual raiz é a mais frágil? A resposta é a mesma para
+      todos os coeficientes?</li>
+
+      <li><b>8.7</b> Implemente Bairstow e aplique-o a \(p(x) = x^5 - 3{,}5x^4 + 2{,}75x^3 +
+      2{,}125x^2 - 3{,}875x + 1{,}25\), varrendo uma grade de palpites \((u,v)\) em
+      \([-4,4]^2\). Pinte cada ponto da grade com a cor do fator a que ele converge, e observe
+      o mapa de bacias. Compare com o que a aula 6 mostrou sobre bacias de atração.</li>
+
+      <li><b>8.8</b> Para a cadeia de \(N\) massas da seção 9, compare as três rotas
+      (deflação sobre \(\mathtt{np.poly}\), <code>np.roots</code>, e <code>eigvalsh</code>)
+      para \(N\) de 3 a 30, e faça o gráfico do erro contra \(N\) em escala log. A partir de
+      que \(N\) a rota polinomial perde o primeiro dígito significativo? E o último?</li>
+
+      <li><b>8.9</b> Em meia página: a seção 5 mediu duas recomendações clássicas e encontrou
+      ganhos muito menores que a reputação delas sugere. Isso significa que as recomendações
+      estão erradas? Argumente considerando a diferença entre o caso típico e o pior caso, e
+      entre um erro de 20% e um erro catastrófico.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula07.html"><small>Aula anterior</small>← 7. Raízes de polinômios</a>
+    <a class="prox" href="aula09.html"><small>Próxima aula</small>9. Interpolação e ajuste →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221122"></script>
+</body>
+</html>
