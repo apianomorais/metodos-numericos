@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 6: Métodos iterativos de ponto fixo | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221048">
+<script src="assets/js/comum.js?v=202611221048"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Erros numéricos e propagação">3</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula04.html" class="num" title="Aula 4: O método da bisseção">4</a>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <a href="aula06.html" class="num ativo" title="Aula 6: Métodos iterativos de ponto fixo">6</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Uma equação, infinitas reescritas</a></li>
+    <li><a href="#s2">2. O diagrama de teia</a></li>
+    <li><a href="#s3">3. O teorema do ponto fixo</a></li>
+    <li><a href="#s4">4. A ordem, e por que Newton é quadrático</a></li>
+    <li><a href="#s5">5. Qual raiz você vai alcançar</a></li>
+    <li><a href="#s6">6. A estimativa de erro que engana</a></li>
+    <li><a href="#s7">7. Aitken e Steffensen</a></li>
+    <li><a href="#s8">8. A temperatura de equilíbrio de um planeta</a></li>
+    <li><a href="#s9">9. No Spyder</a></li>
+    <li><a href="#s10">10. Exercícios resolvidos</a></li>
+    <li><a href="#s11">11. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 6 · Raízes de equações</p>
+  <h1>Métodos iterativos de ponto fixo</h1>
+  <p class="subtitulo">A bisseção e Newton parecem métodos distintos, e não são: os dois, e mais uma infinidade de outros, são casos de uma única receita. Esta aula apresenta a receita e a desigualdade que decide, de uma vez, se um método iterativo converge, com que velocidade, e para qual raiz.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Reescrever \(f(x)=0\) como \(x=\varphi(x)\), e saber que a escolha de \(\varphi\) importa;</li>
+      <li>Ler um diagrama de teia e prever o destino da iteração antes de rodá-la;</li>
+      <li>Enunciar o teorema do ponto fixo e usar \(|\varphi'|\) para classificar o método;</li>
+      <li>Reconhecer Newton como o caso \(\varphi'(\xi)=0\);</li>
+      <li>Estimar o erro a partir de iterados consecutivos, e saber quando essa estimativa engana;</li>
+      <li>Acelerar uma iteração lenta com Aitken, sem calcular derivada nenhuma.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Uma equação, infinitas reescritas</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Ponto fixo</span>
+    <p>Um número \(\xi\) é <strong>ponto fixo</strong> de \(\varphi\) quando
+    \(\varphi(\xi) = \xi\): aplicar \(\varphi\) não muda o valor.</p>
+    <p>O método iterativo linear reescreve \(f(x)=0\) numa forma equivalente \(x=\varphi(x)\)
+    e itera</p>
+    <p>\[ x_{k+1} = \varphi(x_k), \qquad k = 0, 1, 2, \ldots \]</p>
+  </div>
+
+  <p>A equivalência é a parte fácil: se \(\xi\) é raiz de \(f\), é ponto fixo de \(\varphi\),
+  e vice-versa. A dificuldade está em escolher <em>qual</em> \(\varphi\), porque para a mesma
+  equação existem infinitas, e a maioria não funciona.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Quatro reescritas de \(x^2-x-2=0\)</span>
+    <p>As raízes são 2 e \(-1\). Isolando \(x\) de quatro maneiras:</p>
+    <p>\[ \varphi_1 = x^2-2, \qquad \varphi_2 = \sqrt{x+2}, \qquad
+       \varphi_3 = 1 + \frac{2}{x}, \qquad \varphi_4 = \frac{x^2+2}{2x-1}. \]</p>
+    <p>Todas satisfazem \(\varphi_i(2) = 2\). Partindo de \(x_0 = 2{,}5\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(k\)</th><th>\(\varphi_1\)</th><th>\(\varphi_2\)</th>
+          <th>\(\varphi_3\)</th><th>\(\varphi_4\)</th></tr>
+      <tr><td>0</td><td>2,50000000</td><td>2,50000000</td><td>2,50000000</td><td>2,50000000</td></tr>
+      <tr><td>1</td><td>4,25000000</td><td>2,12132034</td><td>1,80000000</td><td>2,06250000</td></tr>
+      <tr><td>2</td><td>16,0625000</td><td>2,03010353</td><td>2,11111111</td><td>2,00125000</td></tr>
+      <tr><td>3</td><td>256,003906</td><td>2,00751178</td><td>1,94736842</td><td>2,00000052</td></tr>
+      <tr><td>4</td><td>65536,0000</td><td>2,00187706</td><td>2,02702703</td><td>2,00000000</td></tr>
+      <tr><td>5</td><td>\(4{,}3\times10^{9}\)</td><td>2,00046921</td><td>1,98666667</td><td>2,00000000</td></tr>
+    </table>
+    </div>
+    <p>O mesmo problema, o mesmo ponto de partida, quatro comportamentos: \(\varphi_1\)
+    explode, \(\varphi_2\) converge de forma monótona, \(\varphi_3\) converge oscilando, e
+    \(\varphi_4\) converge de maneira espetacular.</p>
+  </div>
+
+  <p>A pergunta é o que distingue uma da outra, e a resposta cabe numa única quantidade:</p>
+
+  <p>\[ |\varphi_1'(2)| = 4, \qquad |\varphi_2'(2)| = 0{,}25, \qquad
+     |\varphi_3'(2)| = 0{,}5, \qquad \varphi_4'(2) = 0. \]</p>
+
+  <p>Quem tem \(|\varphi'| > 1\) diverge. Quem tem \(|\varphi'| < 1\) converge, tanto mais
+  depressa quanto menor o valor. Quem tem \(\varphi' = 0\) converge quadraticamente. Todo o
+  resto da aula é formalizar o que essas quatro colunas já mostram.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. O diagrama de teia</h2>
+
+  <p>Iterar tem uma leitura gráfica que dispensa conta. Desenhe \(y = \varphi(x)\) e
+  \(y = x\) no mesmo plano: o ponto fixo é a interseção das duas. A partir de \(x_0\):</p>
+
+  <ol>
+    <li>Suba verticalmente até a curva, chegando em \((x_0, \varphi(x_0)) = (x_0, x_1)\);</li>
+    <li>Ande horizontalmente até a reta, chegando em \((x_1, x_1)\);</li>
+    <li>Repita.</li>
+  </ol>
+
+  <p>O caminho sai em degraus quando \(\varphi' > 0\) e em espiral quando \(\varphi' < 0\), e
+  daí o nome de diagrama de teia. Ele converge para a interseção se a curva for <strong>menos
+  inclinada que a reta</strong>, e se afasta dela em caso contrário.</p>
+
+  <div data-widget="teia"></div>
+
+  <p>Vale gastar um minuto com o widget antes de seguir. Trocando entre as quatro funções com
+  o mesmo \(x_0\), a mudança de comportamento é visível sem que nenhum número apareça: é só
+  comparar a inclinação da curva preta com a da reta cinza no ponto em que elas se cruzam.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. O teorema do ponto fixo</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Teorema</span>
+    <p>Seja \(\xi\) raiz de \(f\) e \(I\) um intervalo centrado em \(\xi\). Se</p>
+    <ol>
+      <li>\(\varphi\) e \(\varphi'\) são contínuas em \(I\);</li>
+      <li>\(|\varphi'(x)| \le L < 1\) para todo \(x \in I\);</li>
+      <li>\(x_0 \in I\) e \(\varphi(I) \subseteq I\),</li>
+    </ol>
+    <p>então \(x_{k+1} = \varphi(x_k)\) converge para \(\xi\), o ponto fixo é único em \(I\),
+    e vale</p>
+    <p>\[ |x_k - \xi| \le L^{k}|x_0-\xi|, \qquad
+       |x_k - \xi| \le \frac{L}{1-L}\,|x_k - x_{k-1}|. \]</p>
+  </div>
+
+  <p>A demonstração cabe em duas linhas, e vale fazê-la porque ela explica tudo. Pelo teorema
+  do valor médio existe \(c\) entre \(x_k\) e \(\xi\) com</p>
+
+  <p>\[ x_{k+1} - \xi = \varphi(x_k) - \varphi(\xi) = \varphi'(c)\,(x_k - \xi), \]</p>
+
+  <p>ou seja, \(|e_{k+1}| = |\varphi'(c)|\,|e_k| \le L\,|e_k|\). O erro é multiplicado por um
+  fator menor que 1 a cada passo, e por isso \(|e_k| \le L^k|e_0| \to 0\).</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que isso é maior do que parece</span>
+    <p>A condição \(|\varphi'| < 1\) diz que \(\varphi\) é uma <strong>contração</strong>: ela
+    aproxima os pontos uns dos outros. Esta é a versão unidimensional do teorema do ponto fixo
+    de Banach, e ele reaparece em contextos que não se parecem nada com achar raízes.</p>
+    <p>Na convergência dos métodos de Jacobi e Gauss-Seidel para sistemas lineares,
+    \(\varphi'\) vira o raio espectral de uma matriz, e a condição vira \(\rho(M) < 1\). Na
+    existência e unicidade de soluções de equações diferenciais, ele é o teorema de
+    Picard-Lindelöf. Na estabilidade de esquemas de integração temporal, é o fator de
+    amplificação de von Neumann.</p>
+    <p>É o mesmo teorema, com roupas diferentes, e aprendê-lo bem aqui poupa trabalho em todos
+    esses lugares.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. A ordem, e por que Newton é quadrático</h2>
+
+  <p>Expandindo \(\varphi\) em Taylor em torno de \(\xi\):</p>
+
+  <p>\[ e_{k+1} = \varphi'(\xi)\,e_k + \frac{\varphi''(\xi)}{2}e_k^2 + \cdots \]</p>
+
+  <p>Se \(\varphi'(\xi) \ne 0\), o termo linear domina e a convergência é de ordem 1, com taxa
+  assintótica \(|\varphi'(\xi)|\). Se \(\varphi'(\xi) = 0\), o termo linear desaparece e sobra
+  o quadrático: a convergência é de ordem 2.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A taxa prevista contra a medida</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(\varphi\)</th><th>taxa prevista</th><th>taxa medida</th>
+          <th>iterações até \(10^{-13}\)</th></tr>
+      <tr><td>\(x^2-2\)</td><td>diverge</td><td>—</td><td>—</td></tr>
+      <tr><td>\(\sqrt{x+2}\)</td><td>0,25000</td><td>0,25000</td><td>22</td></tr>
+      <tr><td>\(1+2/x\)</td><td>0,50000</td><td>0,50000</td><td>44</td></tr>
+      <tr><td>\((x^2+2)/(2x-1)\)</td><td>quadrática</td><td>não é linear</td><td>5</td></tr>
+    </table>
+    </div>
+    <p>A taxa medida reproduz \(|\varphi'(\xi)|\) em cinco casas, e o número de iterações
+    segue daí: com taxa 0,25 cada passo ganha \(\log_{10}4 = 0{,}60\) dígito, e com 0,50 ganha
+    0,30, que é a mesma taxa da bisseção. A \(\varphi_3\) não é melhor que bisseção nenhuma, e
+    ainda perde a garantia.</p>
+  </div>
+
+  <div class="bloco def">
+    <span class="rotulo">Newton é o caso \(\varphi'(\xi)=0\)</span>
+    <p>A quarta função de iteração não foi escolhida ao acaso. Para
+    \(f = x^2-x-2\), com \(f' = 2x-1\),</p>
+    <p>\[ x - \frac{f(x)}{f'(x)} = x - \frac{x^2-x-2}{2x-1}
+       = \frac{2x^2-x-x^2+x+2}{2x-1} = \frac{x^2+2}{2x-1} = \varphi_4(x). \]</p>
+    <p>E isso vale em geral: a função de iteração de Newton é
+    \(\varphi(x) = x - f(x)/f'(x)\), cuja derivada é</p>
+    <p>\[ \varphi'(x) = \frac{f(x)f''(x)}{[f'(x)]^2}, \]</p>
+    <p>que se anula em \(\xi\) porque \(f(\xi) = 0\). Newton é quadrático por construção: ele é
+    o método de ponto fixo que <em>força</em> \(\varphi'(\xi) = 0\).</p>
+  </div>
+
+  <p>Essa é a leitura que vale levar da aula. Newton não é um truque geométrico com retas
+  tangentes: é a escolha ótima de \(\varphi\) dentro de uma família, e a condição de otimalidade
+  é anular a derivada na raiz. A fórmula de \(\varphi'\) acima também explica a falha da aula 5
+  com raízes múltiplas: numa raiz de multiplicidade \(m\), tanto \(f\) quanto \(f'\) se anulam,
+  o quociente não vai a zero, e a convergência volta a ser linear.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Qual raiz você vai alcançar</h2>
+
+  <p>A equação \(x^2-x-2=0\) tem duas raízes, e até aqui só uma apareceu. Partindo de
+  \(x_0 = -1{,}3\), que está a três décimos da raiz \(-1\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(\varphi\)</th><th>\(|\varphi'(-1)|\)</th><th>destino</th></tr>
+    <tr><td>\(x^2-2\)</td><td>2,0000</td><td>não converge (ver abaixo)</td></tr>
+    <tr><td>\(\sqrt{x+2}\)</td><td>\(-1\) nem é ponto fixo</td><td>raiz \(+2\), em 24 passos</td></tr>
+    <tr><td>\(1+2/x\)</td><td>2,0000</td><td>raiz \(+2\), em 50 passos</td></tr>
+    <tr><td>\((x^2+2)/(2x-1)\)</td><td>0,0000</td><td>raiz \(-1\), em 5 passos</td></tr>
+  </table>
+  </div>
+
+  <p>Só \(\varphi_4\) alcança a raiz \(-1\), e o motivo está na coluna do meio: ela é a única
+  com \(|\varphi'(-1)| < 1\). As outras são <strong>repelidas</strong> daquela raiz, por mais
+  perto que se comece.</p>
+
+  <p>A segunda linha merece atenção. A função \(\sqrt{x+2}\) nem tem \(-1\) como ponto fixo,
+  porque \(\sqrt{-1+2} = 1\), e não \(-1\): a raiz quadrada devolve só o ramo positivo, de modo
+  que essa reescrita <em>perdeu uma das raízes pelo caminho</em>. A equivalência entre
+  \(f(x)=0\) e \(x=\varphi(x)\) é mais frágil do que parece.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">O quarto destino, que os livros não listam</span>
+    <p>Os livros costumam dizer que uma iteração converge, diverge, ou oscila convergindo.
+    Falta um caso, e ele aparece aqui. A partir de \(x_0 = -1{,}3\), a iteração
+    \(\varphi_1 = x^2-2\) não faz nada disso:</p>
+    <p>\(-0{,}3100,\; -1{,}9039,\; +1{,}6248,\; +0{,}6401,\; -1{,}5903,\; +0{,}5290,\;
+    -1{,}7202,\; +0{,}9589,\ldots\)</p>
+    <p>Depois de trezentos passos a órbita continua pulando dentro de \([-2,2]\), sem nunca se
+    decidir. E ela é sensível à condição inicial: dois pontos de partida separados por
+    \(10^{-12}\) estão a <strong>2,87 de distância</strong> depois de 60 passos.</p>
+    <p>O mapa \(x \mapsto x^2-2\) é conjugado a \(2\cos(2\theta)\) e é <strong>caótico</strong>
+    no intervalo \([-2,2]\). Quem cursou Mecânica Clássica I reconhece a estrutura do módulo
+    10. Para o nosso propósito aqui, o recado é simples: \(|\varphi'| > 1\) garante que a
+    iteração não converge para aquela raiz, e não garante que ela vá para o infinito. Ela pode
+    simplesmente nunca parar.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. A estimativa de erro que engana</h2>
+
+  <p>Durante o laço, a única coisa mensurável é \(|x_k - x_{k-1}|\): o erro verdadeiro exige
+  saber a raiz, que é o que se procura. O teorema fornece a ponte,</p>
+
+  <p>\[ |x_k - \xi| \le \frac{L}{1-L}\,|x_k - x_{k-1}|, \]</p>
+
+  <p>e vale olhar com atenção para o fator \(L/(1-L)\), porque ele explode quando \(L \to 1\).
+  Testando com \(\varphi(x) = \xi + L(x-\xi)\), em que \(L\) é exato por construção:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(L\)</th><th>erro real</th><th>\(|x_k - x_{k-1}|\)</th>
+        <th>razão medida</th><th>\(L/(1-L)\)</th></tr>
+    <tr><td>0,25</td><td>\(4{,}8\times10^{-7}\)</td><td>\(1{,}4\times10^{-6}\)</td>
+        <td>0,33</td><td>0,33</td></tr>
+    <tr><td>0,50</td><td>\(4{,}9\times10^{-4}\)</td><td>\(4{,}9\times10^{-4}\)</td>
+        <td>1,00</td><td>1,00</td></tr>
+    <tr><td>0,90</td><td>\(1{,}7\times10^{-1}\)</td><td>\(1{,}9\times10^{-2}\)</td>
+        <td>9,00</td><td>9,00</td></tr>
+    <tr><td>0,99</td><td>\(4{,}5\times10^{-1}\)</td><td>\(4{,}6\times10^{-3}\)</td>
+        <td>99,00</td><td>99,00</td></tr>
+  </table>
+  </div>
+
+  <p>A razão medida reproduz \(L/(1-L)\) em todas as casas, e o recado está na última linha.
+  Com \(L = 0{,}99\), a diferença entre iterados <strong>subestima o erro por um fator
+  99</strong>: os iterados mal se mexem, o critério de parada se declara satisfeito, e a
+  resposta está a cem diferenças da raiz.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">Convergência lenta é traiçoeira porque parece convergência</span>
+    <p>Esse é o modo de falha mais perigoso desta aula, porque não há sintoma. O laço termina,
+    o programa imprime um número, e nada indica que ele está errado na segunda casa.</p>
+    <p>A defesa é estimar \(L\) antes de confiar na diferença entre iterados, e ela é barata:
+    a razão \(|x_k - x_{k-1}|/|x_{k-1}-x_{k-2}|\) converge para \(|\varphi'(\xi)|\), de modo
+    que três iterados já dão uma estimativa utilizável. Se ela vier perto de 1, multiplique a
+    diferença por \(L/(1-L)\) antes de acreditar.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. Aitken e Steffensen</h2>
+
+  <p>Quando a convergência é linear, os erros satisfazem \(e_{k+1} \approx C\,e_k\) com \(C\)
+  aproximadamente constante. Essa regularidade é informação, e dá para extraí-la.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Extrapolação \(\Delta^2\) de Aitken</span>
+    <p>A partir de três iterados consecutivos,</p>
+    <p>\[ \hat{x}_k = x_k - \frac{(x_{k+1}-x_k)^2}{x_{k+2} - 2x_{k+1} + x_k}. \]</p>
+    <p>A sequência \(\{\hat{x}_k\}\) converge mais depressa que \(\{x_k\}\).</p>
+    <p>O <strong>método de Steffensen</strong> aplica Aitken dentro do laço, reiniciando a
+    iteração a cada extrapolação. O resultado é convergência quadrática <em>sem usar
+    derivada</em>.</p>
+  </div>
+
+  <p>Em \(\varphi_2 = \sqrt{x+2}\) a partir de 2,5, o ponto fixo simples gasta 21 iterações
+  para chegar a \(10^{-12}\), e Steffensen gasta 4. Como cada passo de Steffensen avalia
+  \(\varphi\) duas vezes, a comparação justa é 21 contra 8 avaliações.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Medir a ordem exige mais precisão do que o problema tem</span>
+    <p>A ordem se mede pela razão \(e_{k+1}/e_k^2\), que fica constante quando a convergência
+    é quadrática. Em <code>float64</code>, os erros de Steffensen são
+    \(1{,}16\times10^{-3}\), \(6{,}99\times10^{-9}\) e \(4{,}44\times10^{-16}\), e as razões
+    dão 0,0052 e 9,08: nada constante.</p>
+    <p>A medida não serve, e o motivo é o da aula 3. Steffensen chega ao piso de arredondamento
+    em três passos, e a última razão sai de um erro que já é ruído. Refazendo em 80 dígitos com
+    o <code>mpmath</code>:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(k\)</th><th>\(e_k\)</th><th>\(e_{k+1}/e_k^2\)</th><th>ordem estimada</th></tr>
+      <tr><td>1</td><td>\(1{,}159\times10^{-3}\)</td><td>0,0052069</td><td>2,0000</td></tr>
+      <tr><td>2</td><td>\(6{,}993\times10^{-9}\)</td><td>0,0052083</td><td>2,0000</td></tr>
+      <tr><td>3</td><td>\(2{,}547\times10^{-19}\)</td><td>0,0052083</td><td></td></tr>
+      <tr><td>4</td><td>\(3{,}379\times10^{-40}\)</td><td></td><td></td></tr>
+      <tr><td>5</td><td>\(4{,}217\times10^{-81}\)</td><td></td><td></td></tr>
+    </table>
+    </div>
+    <p>Agora sim: a razão fica em 0,00521 e a ordem dá 2,0000. Steffensen é mesmo quadrático,
+    e sem ter visto uma derivada.</p>
+  </div>
+
+  <p>É a resposta certa para uma situação bastante comum: existe uma iteração natural para o
+  problema, vinda da própria física, que converge mas devagar, e não há derivada à mão. Em vez
+  de reformular tudo para usar Newton, acelera-se o que já existe.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Os métodos de raiz, lado a lado</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>método</th><th>ordem</th><th>exige</th><th>garantia</th><th>aula</th></tr>
+      <tr><td>bisseção</td><td>1 (taxa 1/2)</td><td>troca de sinal</td><td>global</td><td>4</td></tr>
+      <tr><td>ponto fixo</td><td>1 (taxa \(|\varphi'|\))</td><td>\(|\varphi'|<1\)</td>
+          <td>local</td><td>6</td></tr>
+      <tr><td>secante</td><td>1,618</td><td>dois pontos</td><td>local</td><td>5</td></tr>
+      <tr><td>Newton-Raphson</td><td>2</td><td>\(f'\)</td><td>local</td><td>5</td></tr>
+      <tr><td>Steffensen</td><td>2</td><td>nada além de \(\varphi\)</td><td>local</td><td>6</td></tr>
+    </table>
+    </div>
+    <p>A coluna da garantia é a que decide na prática. Só a bisseção é global, e é por isso que
+    a <code>brentq</code> a mantém por dentro enquanto usa os outros por fora.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. A temperatura de equilíbrio de um planeta</h2>
+
+  <p>Um planeta em equilíbrio radiativo emite tanta energia quanto absorve. Com um termo
+  simplificado de efeito estufa, proporcional a \(T\), o balanço fica</p>
+
+  <p>\[ \sigma T^4 = \frac{S(1-\alpha)}{4} + \beta T, \]</p>
+
+  <p>onde \(S\) é a constante solar, \(\alpha\) o albedo e \(\sigma\) a constante de
+  Stefan-Boltzmann. Isolando \(T\) da potência quarta surge, naturalmente, uma forma de ponto
+  fixo:</p>
+
+  <p>\[ T = \varphi(T) = \left[\frac{S(1-\alpha)/4 + \beta T}{\sigma}\right]^{1/4}. \]</p>
+
+  <p>Com \(S = 1361\) W/m² e \(\alpha = 0{,}30\), o fluxo absorvido é 238,17 W/m². Sem
+  atmosfera, \(\beta = 0\), e a conta é direta:</p>
+
+  <p>\[ T_{\text{efetiva}} = \left[\frac{238{,}17}{\sigma}\right]^{1/4}
+     = 254{,}58\ \text{K} = -18{,}57\ ^\circ\text{C}. \]</p>
+
+  <p>A Terra observada tem média global de 288 K, ou 15 °C. Os 33 K de diferença são o efeito
+  estufa, e é isso que \(\beta\) representa.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">De onde sai o \(\beta\)</span>
+    <p>O valor de \(\beta\) não se tira do nada: ele se <strong>calibra</strong> pela
+    temperatura observada. Impondo \(T = 288\) K,</p>
+    <p>\[ \beta = \frac{\sigma(288)^4 - 238{,}17}{288}
+       = \frac{390{,}11 - 238{,}17}{288} = 0{,}5275\ \text{W/m²/K}. \]</p>
+    <p>Esse passo não é burocracia. Um \(\beta\) escolhido sem calibração produz respostas
+    sem sentido: com \(\beta = 2{,}2\) o modelo devolve 368,9 K, ou seja, 95,7 °C, e o
+    programa confere isso. Num modelo com um parâmetro livre, <em>toda</em> a física está em
+    como esse parâmetro foi fixado.</p>
+  </div>
+
+  <p>Com o \(\beta\) calibrado, a iteração converge de qualquer chute positivo:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(T_0\) (K)</th><th>1</th><th>100</th><th>288</th><th>1000</th><th>5000</th></tr>
+    <tr><th>iterações</th><td>14</td><td>14</td><td>1</td><td>14</td><td>15</td></tr>
+  </table>
+  </div>
+
+  <p>O motivo é \(|\varphi'| = 0{,}0974\) na raiz: a potência um quarto achata qualquer
+  variação de \(T\), de modo que a iteração é fortemente contrativa e a bacia de atração é
+  praticamente toda a reta positiva. Não é preciso chutar bem, e isso é típico de iterações que
+  vêm de um balanço físico.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">O que o modelo responde, e o que ele não responde</span>
+    <p>Com o modelo calibrado, dá para perguntar o que muda quando o albedo muda:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>albedo</th><th>0,25</th><th>0,28</th><th>0,30</th><th>0,32</th><th>0,35</th></tr>
+      <tr><th>\(T\) (K)</th><td>291,41</td><td>289,38</td><td>288,00</td><td>286,60</td><td>284,45</td></tr>
+      <tr><th>desvio</th><td>\(+3{,}41\)</td><td>\(+1{,}38\)</td><td>0</td><td>\(-1{,}40\)</td><td>\(-3{,}55\)</td></tr>
+    </table>
+    </div>
+    <p>Cinco centésimos de albedo valem uns 3,5 K, o que dá ideia da sensibilidade do clima à
+    cobertura de nuvens e de gelo, e sugere por que o derretimento das calotas preocupa: menos
+    gelo significa menos albedo, que significa mais temperatura, que significa menos gelo.</p>
+    <p>Convém dizer o que o modelo não é. Um termo linear em \(T\) é uma caricatura do efeito
+    estufa, calibrada por um único ponto, sem oceanos, sem circulação e sem nuvens. Ele serve
+    para ver a iteração de ponto fixo funcionando num problema de verdade, e não para prever
+    clima.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/pontofixo.py">
+      <span class="numero">Programa</span>
+      <h3>pontofixo.py</h3>
+      <p>Roda as quatro funções de iteração e confere a taxa medida contra \(|\varphi'|\);
+      mostra que a escolha de \(\varphi\) decide qual raiz se alcança; mede a estimativa
+      \(L/(1-L)\); verifica a ordem de Steffensen em 80 dígitos; e resolve o equilíbrio
+      radiativo com o coeficiente calibrado.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>As taxas medidas de \(\varphi_2\) e \(\varphi_3\) dão 0,25000 e 0,50000, que são
+    exatamente \(|\varphi'(2)|\).</li>
+    <li>Só \(\varphi_4\) alcança a raiz \(-1\), e a coluna de \(|\varphi'(-1)|\) diz por quê
+    antes de qualquer iteração.</li>
+    <li>A órbita de \(\varphi_1\) a partir de \(-1{,}3\) fica presa em \([-2,2]\) por 300
+    passos, e duas condições iniciais a \(10^{-12}\) se separam em 2,87 após 60 passos.</li>
+    <li>A razão entre o erro real e a diferença entre iterados reproduz \(L/(1-L)\) nas quatro
+    linhas, até 99,00 para \(L = 0{,}99\).</li>
+    <li>Em 80 dígitos, a razão \(e_{k+1}/e_k^2\) de Steffensen fica em 0,0052083 e a ordem dá
+    2,0000.</li>
+    <li>O \(\beta\) calibrado devolve exatamente 288,00 K, como tem de ser, e de cinco chutes
+    iniciais diferentes.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Duas medidas que precisaram de mais precisão do que float64 tem</span>
+    <p>Duas afirmações desta aula não puderam ser verificadas em precisão dupla, e as duas pelo
+    mesmo motivo: o método é bom demais. Steffensen chega ao último bit em três passos, e a
+    taxa de \(\varphi_2\) medida perto do piso dava 0,248 em vez de 0,250.</p>
+    <p>No primeiro caso a saída foi subir para 80 dígitos com o <code>mpmath</code>; no
+    segundo, descartar os erros abaixo de \(10^{-11}\) antes de calcular a razão. Os dois
+    consertos são a mesma ideia: <strong>não se mede a qualidade de um método com uma
+    aritmética que já virou o gargalo</strong>. É o mesmo conselho que a aula 3 deu sobre
+    medir condicionamento.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 6.1 · Construir uma \(\varphi\) que funcione</span>
+    <p>A equação \(x e^{x} = 1\) tem uma raiz perto de 0,57. Proponha três funções de iteração,
+    decida quais convergem <em>sem rodar nada</em>, e confirme.</p>
+
+    <p><strong>As três.</strong> Isolando \(x\) de maneiras diferentes:</p>
+    <p>\[ \varphi_a = e^{-x}, \qquad \varphi_b = \frac{1}{e^{x}}\ \text{(a mesma)}, \qquad
+       \varphi_c = -\ln x, \qquad \varphi_d = \frac{x + e^{-x}}{2}. \]</p>
+    <p>As duas primeiras são a mesma função escrita de dois jeitos, o que já é um aviso: a
+    reescrita algébrica não é o que importa, e sim a função resultante.</p>
+
+    <p><strong>Decidindo antes de rodar.</strong> A raiz é \(\xi \approx 0{,}5671\), que é a
+    constante \(W(1)\) de Lambert.</p>
+    <ul>
+      <li>\(\varphi_a' = -e^{-x}\), de modo que \(|\varphi_a'(\xi)| = e^{-0{,}5671} = 0{,}567\).
+      Menor que 1: converge, linearmente, com taxa 0,567, e em espiral porque a derivada é
+      negativa.</li>
+      <li>\(\varphi_c' = -1/x\), de modo que \(|\varphi_c'(\xi)| = 1/0{,}5671 = 1{,}763\).
+      Maior que 1: <strong>diverge</strong>. E note que \(\varphi_c\) é a função inversa de
+      \(\varphi_a\), o que não é coincidência: inverter uma função inverte a derivada, e
+      transforma contração em expansão.</li>
+      <li>\(\varphi_d = (x+e^{-x})/2\) é a média entre \(x\) e \(\varphi_a\), de modo que
+      \(\varphi_d' = (1 - e^{-x})/2\) e \(|\varphi_d'(\xi)| = 0{,}2165\). Menor, e portanto
+      <strong>mais rápida</strong> que \(\varphi_a\).</li>
+    </ul>
+
+    <p><strong>Conferindo.</strong> De \(x_0 = 0{,}5\), com tolerância \(10^{-12}\):
+    \(\varphi_a\) leva 46 iterações, \(\varphi_c\) estoura no quinto passo, ao pedir
+    \(\ln\) de número negativo, e \(\varphi_d\) leva 18. As três previsões se
+    confirmam, inclusive a ordem entre as duas que convergem.</p>
+
+    <div class="bloco def">
+      <span class="rotulo">A receita que esse exercício ensina</span>
+      <p>A média entre \(x\) e \(\varphi(x)\) é um truque geral e barato: ela troca
+      \(\varphi'\) por \((1+\varphi')/2\), que fica mais perto de zero sempre que \(\varphi'\)
+      é negativo. Uma iteração oscilante quase sempre melhora amortecida assim, e é esse o
+      princípio por trás da sub-relaxação usada em métodos iterativos para sistemas
+      lineares.</p>
+      <p>Levando ao limite, escolher o peso que anula \(\varphi'(\xi)\) exatamente dá
+      Newton.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 6.2 · Quando a física entrega a iteração pronta</span>
+    <p>A equação de Kepler, \(M = E - e\sen E\), precisa ser invertida para achar \(E\) dado
+    \(M\). A reescrita óbvia é \(E = M + e\sen E\). Diga para quais excentricidades ela
+    converge, com que velocidade, e o que fazer para a órbita do cometa Halley,
+    \(e = 0{,}967\).</p>
+
+    <p><strong>A análise cabe numa linha.</strong> Com \(\varphi(E) = M + e\sen E\),</p>
+    <p>\[ \varphi'(E) = e\cos E, \qquad |\varphi'| \le e. \]</p>
+    <p>Logo a iteração converge para <strong>toda</strong> excentricidade \(e < 1\), de
+    qualquer ponto de partida, e a taxa é no máximo \(e\). Isso é um resultado forte, e explica
+    por que essa iteração foi usada por astrônomos durante dois séculos sem computador: ela não
+    tem como falhar numa órbita elíptica.</p>
+
+    <p><strong>O problema é a velocidade, e ela depende de onde o planeta está.</strong> A
+    cota \(|\varphi'| \le e\) vale sempre, mas a taxa <em>assintótica</em> é
+    \(e\,|\cos E^\ast|\), avaliada na solução, e isso muda tudo:</p>
+
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(M\) (rad)</th><th>\(E^\ast\)</th><th>\(e|\cos E^\ast|\)</th>
+          <th>iterações previstas</th><th>medidas</th></tr>
+      <tr><td>0,001</td><td>0,03017</td><td>0,9666</td><td>812</td><td>610</td></tr>
+      <tr><td>0,01</td><td>0,23766</td><td>0,9398</td><td>445</td><td>385</td></tr>
+      <tr><td>0,1</td><td>0,78023</td><td>0,6873</td><td>74</td><td>75</td></tr>
+      <tr><td>0,5</td><td>1,46120</td><td>0,1058</td><td>12</td><td>15</td></tr>
+      <tr><td>2,0</td><td>2,54405</td><td>0,7994</td><td>123</td><td>124</td></tr>
+      <tr><td>3,0</td><td>3,06958</td><td>0,9645</td><td>764</td><td>710</td></tr>
+    </table>
+    </div>
+
+    <p>Para \(M = 0{,}1\) são 75 iterações, e não as 823 que a cota sugeriria. Mas perto do
+    periélio e do afélio, onde \(\cos E^\ast\) se aproxima de \(\pm 1\), a taxa sobe para
+    perto de \(e\) e o custo passa de seiscentas iterações. As duas últimas linhas da coluna
+    medida ficam abaixo da previsão porque a taxa assintótica só se instala depois de alguns
+    passos, e o começo é mais rápido que o fim.</p>
+
+    <p>E há o agravante da seção 6: com \(L = 0{,}967\) o fator \(L/(1-L)\) vale 29, de
+    modo que parar quando \(|E_k - E_{k-1}| < 10^{-12}\) deixa um erro real de até
+    \(3\times10^{-11}\). Trinta vezes pior do que o critério sugere, e justamente nos casos
+    em que a iteração já estava lenta.</p>
+
+    <p><strong>Três saídas, em ordem de esforço.</strong></p>
+    <ol>
+      <li><strong>Steffensen</strong> sobre a mesma \(\varphi\), sem mudar nada no modelo
+      físico, e sem derivada. A ordem sobe para 2.</li>
+      <li><strong>Newton</strong>, que aqui é barato porque
+      \(f' = 1 - e\cos E\) sai de graça: \(E_{k+1} = E_k - (E_k - e\sen E_k - M)/(1-e\cos E_k)\).
+      Converge em poucos passos, mas exige cuidado com o chute inicial quando \(e\) se aproxima
+      de 1, e o exercício 5.1 da aula 5 explora isso.</li>
+      <li><strong>Um chute melhor.</strong> Para \(e\) perto de 1, \(E_0 = \pi\) funciona
+      melhor que \(E_0 = M\), e existem aproximações de partida publicadas que já entregam
+      três dígitos.</li>
+    </ol>
+
+    <p><strong>A lição geral.</strong> A iteração que a física entrega de bandeja costuma ser
+    robusta e lenta, porque ela nasce de um balanço e não de uma otimização. Antes de
+    abandoná-la por Newton, vale perguntar se ela não pode ser acelerada: Steffensen custa duas
+    linhas e preserva a robustez que o modelo trouxe.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>6.1</b> Para \(f(x) = x^3 - x - 1\), cuja raiz real é 1,3247 (o número plástico),
+      proponha quatro funções de iteração, calcule \(|\varphi'|\) na raiz para cada uma, e
+      ordene-as por velocidade prevista. Confirme rodando, e faça o diagrama de teia das
+      quatro.</li>
+
+      <li><b>6.2</b> Implemente a estimativa de \(L\) por \(|x_k-x_{k-1}|/|x_{k-1}-x_{k-2}|\) e
+      acrescente ao seu laço um aviso quando \(L > 0{,}9\). Teste numa iteração lenta e mostre
+      que o aviso dispara antes de o critério de parada se declarar satisfeito.</li>
+
+      <li><b>6.3</b> Reproduza o caos de \(\varphi_1 = x^2-2\): faça o gráfico de 10 mil
+      iterados a partir de \(x_0 = -1{,}3\), calcule o expoente de Lyapunov numericamente, e
+      compare com o valor teórico \(\ln 2\). Explique a relação com a conjugação a
+      \(2\cos(2\theta)\).</li>
+
+      <li><b>6.4</b> A iteração \(\varphi(x) = (x + a/x)/2\) é o método babilônico para
+      \(\sqrt{a}\), conhecido desde 1800 a.C. Mostre que ela é Newton aplicado a \(x^2-a\),
+      calcule \(\varphi'(\sqrt{a})\), e meça a ordem para \(a = 2\) a partir de \(x_0 = 1\).
+      Quantas iterações para 50 dígitos, com <code>mpmath</code>?</li>
+
+      <li><b>6.5</b> Aplique Steffensen à iteração de Kepler do exercício resolvido 6.2 para
+      \(e = 0{,}967\) e os seis valores de \(M\) da tabela. Conte as avaliações de
+      \(\varphi\) em cada caso e compare com as iterações do ponto fixo simples. O ganho é
+      maior onde a iteração original era mais lenta? Deveria ser?</li>
+
+      <li><b>6.6</b> Refaça o modelo de equilíbrio radiativo para Marte
+      (\(S = 586\) W/m², \(\alpha = 0{,}25\)) e para Vênus (\(S = 2601\) W/m²,
+      \(\alpha = 0{,}77\)), calibrando \(\beta\) em cada caso pelas temperaturas observadas de
+      210 K e 737 K. Compare os três \(\beta\) e comente o que eles dizem sobre as atmosferas.</li>
+
+      <li><b>6.7</b> Mostre que, se \(\varphi'(\xi) = 0\) <em>e</em> \(\varphi''(\xi) = 0\), a
+      convergência é cúbica. Construa uma \(\varphi\) com essa propriedade para \(x^2-2=0\) e
+      meça a ordem em 80 dígitos. Dica: o método de Halley da aula 5.</li>
+
+      <li><b>6.8</b> Em meia página: a tabela da seção 7 diz que só a bisseção tem garantia
+      global. Explique o que isso significa exatamente, por que os métodos de ordem maior não
+      podem tê-la, e como a <code>brentq</code> consegue ter as duas coisas ao mesmo tempo.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula05.html"><small>Aula anterior</small>← 5. Newton</a>
+    <a class="prox" href="aula09.html"><small>Próxima aula</small>9. Interpolação e ajuste →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221048"></script>
+</body>
+</html>

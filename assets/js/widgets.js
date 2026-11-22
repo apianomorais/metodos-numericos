@@ -1686,6 +1686,165 @@
     registrarRedesenho(desenhar);
   };
 
+  /* ------------------------------------------------------------------
+     Diagrama de teia: y = phi(x) contra y = x, e o caminho em degraus
+     ou em espiral. A inclinacao da curva na interseção decide tudo, e a
+     figura deixa isso visível sem uma conta.
+     ------------------------------------------------------------------ */
+  REGISTRO.teia = function (raiz) {
+    var corpo = moldura(raiz, 'O diagrama de teia');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var qual = 1, x0 = 2.5, npassos = 12;
+
+    var FIS = [
+      { rot: 'x² − 2', fixos: [2, -1], f: function (x) { return x * x - 2; },
+        d: function (x) { return 2 * x; }, lo: -2.6, hi: 3.0 },
+      { rot: '√(x+2)', fixos: [2], f: function (x) { return Math.sqrt(x + 2); },
+        d: function (x) { return 0.5 / Math.sqrt(x + 2); }, lo: -1.9, hi: 3.0 },
+      { rot: '1 + 2/x', fixos: [2, -1], f: function (x) { return 1 + 2 / x; },
+        d: function (x) { return -2 / (x * x); }, lo: 0.35, hi: 3.0 },
+      { rot: '(x²+2)/(2x−1)', fixos: [2, -1], f: function (x) { return (x * x + 2) / (2 * x - 1); },
+        d: function (x) { return (2 * x * (2 * x - 1) - 2 * (x * x + 2))
+                                 / Math.pow(2 * x - 1, 2); },
+        lo: 0.8, hi: 3.0 }
+    ];
+
+    opcoes(corpo, FIS.map(function (o, i) {
+      return { rot: 'φ = ' + o.rot, v: i };
+    }), 1, function (v) { qual = v; desenhar(); });
+
+    deslizante(corpo, 'Ponto de partida x₀ =', -15, 30, 1, 25,
+      function (v) { x0 = v / 10; desenhar(); },
+      function (v) { return N.fmt(v / 10, 1); });
+
+    deslizante(corpo, 'Passos:', 1, 30, 1, 12,
+      function (v) { npassos = v; desenhar(); });
+
+    var mostrar = cartoes(corpo, [
+      { rot: '|φ′| na raiz 2', k: 'a' },
+      { rot: 'destino', k: 'b' },
+      { rot: 'x após os passos', k: 'c' },
+      { rot: 'erro', k: 'd' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var o = FIS[qual];
+      var p = G.preparar(cv, Math.min(330, Math.max(240, cv.clientWidth * 0.46)));
+      /* A leitura do diagrama depende de a reta y = x aparecer a 45
+         graus, e para isso a escala tem de ser a MESMA nos dois eixos.
+         A janela em y vem da regiao de interesse; a em x e alargada na
+         razao dos lados da area de desenho. */
+      var MG = { e: 50, d: 16, c: 12, b: 34 };
+      var larguraPx = p.L - MG.e - MG.d, alturaPx = p.A - MG.c - MG.b;
+      /* a janela cobre os pontos fixos, o ponto de partida e o primeiro
+         salto, e nada alem disso: sobra desenhada e teia minuscula */
+      var alvos = o.fixos.concat([x0]);
+      var y1 = o.f(x0);
+      if (isFinite(y1) && Math.abs(y1) < 20) alvos.push(y1);
+      var baixo = Math.min.apply(null, alvos), alto = Math.max.apply(null, alvos);
+      if (alto - baixo < 1.2) { var c0 = (alto + baixo) / 2; baixo = c0 - 0.6; alto = c0 + 0.6; }
+      var folga = 0.22 * (alto - baixo);
+      baixo -= folga; alto += folga;
+      var meio = (baixo + alto) / 2, metadeY = (alto - baixo) / 2;
+      var metadeX = metadeY * larguraPx / alturaPx;
+      var g = G.eixos(cv, {
+        altura: p.A, limpar: false,
+        xmin: meio - metadeX, xmax: meio + metadeX,
+        ymin: baixo, ymax: alto,
+        rotX: 'x', rotY: 'φ(x)', divY: 4,
+        margem: MG,
+        formataY: function (v) { return N.fmt(v, 1); }
+      });
+      var lo = g.xmin, hi = g.xmax;
+      var ct = g.ct, i;
+      ct.save();
+      ct.beginPath();
+      ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      ct.clip();
+
+      /* a reta y = x */
+      ct.strokeStyle = G.COR.clara; ct.lineWidth = 1.4;
+      ct.beginPath();
+      ct.moveTo(g.X(g.ymin), g.Y(g.ymin)); ct.lineTo(g.X(g.ymax), g.Y(g.ymax));
+      ct.stroke();
+      rotulo(ct, 'y = x', g.X(g.ymax) + 8, g.Y(g.ymax) + 12, G.COR.clara, 'left');
+
+      /* a curva y = phi(x) */
+      ct.beginPath();
+      var comecou = false;
+      for (i = 0; i <= 400; i++) {
+        var xx = lo + (hi - lo) * i / 400, yy = o.f(xx);
+        /* corta o traco quando a curva sai da janela: sem isso o polo de
+           1 + 2/x vira uma barra vertical ligando -infinito a +infinito */
+        if (!isFinite(yy) || yy < baixo - 2 * metadeY || yy > alto + 2 * metadeY) {
+          comecou = false; continue;
+        }
+        if (!comecou) { ct.moveTo(g.X(xx), g.Y(yy)); comecou = true; }
+        else ct.lineTo(g.X(xx), g.Y(yy));
+      }
+      ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2.2; ct.stroke();
+
+      /* a teia */
+      var x = x0, dentro = true;
+      ct.strokeStyle = G.COR.vinho; ct.lineWidth = 1.4;
+      ct.beginPath();
+      ct.moveTo(g.X(x), g.Y(x < lo ? lo : (x > hi ? hi : x)));
+      for (i = 0; i < npassos; i++) {
+        var y = o.f(x);
+        if (!isFinite(y) || Math.abs(y) > 1e6) { dentro = false; break; }
+        ct.lineTo(g.X(x), g.Y(y));      /* sobe ate a curva */
+        ct.lineTo(g.X(y), g.Y(y));      /* anda ate a reta */
+        x = y;
+      }
+      ct.stroke();
+
+      /* o ponto de partida e o ponto final */
+      ct.fillStyle = G.COR.bronze;
+      ct.beginPath(); ct.arc(g.X(x0), g.Y(x0), 4.5, 0, 2 * Math.PI); ct.fill();
+      rotulo(ct, 'x₀', g.X(x0), g.Y(x0) - 13, G.COR.bronze, 'center');
+      if (dentro && isFinite(x)) {
+        ct.fillStyle = G.COR.vinho;
+        ct.beginPath(); ct.arc(g.X(x), g.Y(x), 4.5, 0, 2 * Math.PI); ct.fill();
+      }
+      ct.restore();
+
+      var L = Math.abs(o.d(2.0));
+      var fugiu = !dentro || !isFinite(x) || Math.abs(x) > 1e6;
+      var perto2 = Math.abs(x - 2) < 1e-6, pertom1 = Math.abs(x + 1) < 1e-6;
+      mostrar({
+        a: N.fmt(L, 4),
+        b: fugiu ? 'escapou' : (perto2 ? 'raiz 2'
+           : (pertom1 ? 'raiz −1' : 'ainda andando')),
+        c: fugiu ? '—' : N.fmt(x, 9),
+        d: fugiu ? '—' : N.sci(Math.min(Math.abs(x - 2), Math.abs(x + 1)), 2)
+      });
+
+      saida.innerHTML =
+        'A teia sobe até a curva e anda até a reta, e repete. Ela converge '
+        + 'quando a curva é <strong>menos inclinada que a reta</strong> na '
+        + 'interseção, e escapa quando é mais. Aqui \\(|\\varphi\'(2)| = '
+        + N.fmt(L, 3).replace(',', '{,}') + '\\): '
+        + (L > 1 ? 'maior que 1, e a teia se afasta por mais perto que se comece.'
+           : (L === 0 ? 'zero, e a convergência é quadrática. Essa é a φ de Newton.'
+              : 'menor que 1, e a teia converge, '))
+        + (L > 0 && L < 1
+           ? (o.d(2.0) < 0 ? 'em espiral, porque \\(\\varphi\' < 0\\) troca '
+                             + 'o lado a cada passo.'
+              : 'em degraus, porque \\(\\varphi\' > 0\\) mantém o lado.')
+           : '')
+        + ' Arraste o ponto de partida e veja o que muda, e o que não muda: '
+        + 'o destino depende da inclinação na raiz, e quase nunca de onde '
+        + 'se começa.';
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {
