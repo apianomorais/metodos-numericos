@@ -262,6 +262,244 @@
   };
 
 
+  /* =================================================================
+     2. Newton: o passo e a bacia
+     A primeira vista mostra de onde vem a convergência quadrática:
+     a tangente, o ponto onde ela corta o eixo, e o erro encolhendo.
+     A segunda mostra o preço disso. Pintando cada ponto de partida
+     pela raiz a que ele leva, aparece uma estrutura que não tem nada
+     de simples perto dos pontos críticos, e que é a razão de Newton
+     precisar de chute bom. Com três raízes reais, "a raiz mais
+     próxima" simplesmente não é a resposta.
+     ================================================================= */
+  REGISTRO.newton = function (raiz) {
+    var corpo = moldura(raiz, 'O passo de Newton e a bacia de atração');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var vista = 0, x0 = 2.6, passos = 0;
+
+    /* f(x) = x^3 - 5x, com raízes em -raiz(5), 0 e +raiz(5), e derivada
+       nula em +-raiz(5/3). É o caso mais simples em que Newton pode ir
+       para qualquer uma das três. */
+    function f(x) { return x * x * x - 5 * x; }
+    function fl(x) { return 3 * x * x - 5; }
+    var R5 = Math.sqrt(5), RC = Math.sqrt(5 / 3);
+    var RAIZES = [-R5, 0, R5];
+    var CORES = [G.COR.vinho, G.COR.mestra, G.COR.bronze];
+
+    /* para onde Newton leva, a partir de x. Devolve o índice da raiz,
+       ou -1 se não chegar a nenhuma. */
+    function destino(x) {
+      for (var k = 0; k < 60; k++) {
+        var d = fl(x);
+        if (d === 0 || !isFinite(x)) return -1;
+        x = x - f(x) / d;
+        if (Math.abs(x) > 1e6) return -1;
+      }
+      for (var i = 0; i < 3; i++) if (Math.abs(x - RAIZES[i]) < 1e-6) return i;
+      return -1;
+    }
+
+    opcoes(corpo, [{ rot: 'Um passo de cada vez', v: 0 },
+                   { rot: 'Bacia de atração', v: 1 }], 0,
+      function (v) { vista = v; desenhar(); });
+
+    var dx0 = deslizante(corpo, 'Ponto de partida \\(x_0\\):', -300, 300, 1,
+      Math.round(x0 * 100),
+      function (v) { x0 = v / 100; passos = 0; desenhar(); },
+      function (v) { return N.fmt(v / 100, 2); });
+
+    var linhaBotoes = el('div', { class: 'botoes' });
+    var bPasso = el('button', { type: 'button', texto: 'Dar um passo' });
+    var bZera = el('button', { type: 'button', class: 'sec', texto: 'Recomeçar' });
+    bPasso.addEventListener('click', function () { passos++; desenhar(); });
+    bZera.addEventListener('click', function () { passos = 0; desenhar(); });
+    linhaBotoes.appendChild(bPasso);
+    linhaBotoes.appendChild(bZera);
+    corpo.appendChild(linhaBotoes);
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'Passos dados', k: 'n' },
+      { rot: '\\(x_n\\)', k: 'x' },
+      { rot: 'Erro \\(|x_n-r|\\)', k: 'e' },
+      { rot: 'Raiz alcançada', k: 'r' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    /* a sequência de iterados a partir de x0 */
+    function iterados(n) {
+      var seq = [x0], x = x0;
+      for (var k = 0; k < n; k++) {
+        var d = fl(x);
+        if (d === 0 || !isFinite(x) || Math.abs(x) > 1e8) break;
+        x = x - f(x) / d;
+        seq.push(x);
+      }
+      return seq;
+    }
+
+    function desenhar() {
+      var alt = vista === 0 ? 300 : 190;
+      var p = G.preparar(cv, Math.min(alt, Math.max(alt * 0.8,
+                                                    cv.clientWidth * 0.34)));
+      var ct = p.ct;
+      linhaBotoes.style.display = vista === 0 ? '' : 'none';
+
+      var seq = iterados(passos);
+      var xa = seq[seq.length - 1];
+      var idx = destino(x0);
+
+      if (vista === 0) {
+        var g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: -3.2, xmax: 3.2, ymin: -9, ymax: 9,
+          rotX: 'x', rotY: 'f(x)', divY: 6,
+          margem: { e: 46, d: 16, c: 12, b: 34 },
+          marcasX: [-3, -2, -1, 0, 1, 2, 3].map(function (t) {
+            return { v: t, r: String(t) };
+          })
+        });
+        /* a curva, traçada à mão porque G.curva corta no quadro */
+        ct.save();
+        ct.beginPath();
+        for (var i = 0; i <= 400; i++) {
+          var xx = -3.2 + 6.4 * i / 400, yy = f(xx);
+          if (yy < -9 || yy > 9) { ct.moveTo(g.X(xx), g.Y(Math.max(-9, Math.min(9, yy)))); continue; }
+          if (i === 0) ct.moveTo(g.X(xx), g.Y(yy)); else ct.lineTo(g.X(xx), g.Y(yy));
+        }
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2; ct.stroke();
+
+        /* as três raízes */
+        RAIZES.forEach(function (r, i) {
+          ct.fillStyle = CORES[i];
+          ct.beginPath(); ct.arc(g.X(r), g.Y(0), 4.5, 0, 2 * Math.PI); ct.fill();
+        });
+        /* onde a derivada se anula, que é onde o método escorrega */
+        [-RC, RC].forEach(function (c) {
+          ct.strokeStyle = '#c9ccd2'; ct.lineWidth = 1; ct.setLineDash([3, 3]);
+          ct.beginPath(); ct.moveTo(g.X(c), g.y0); ct.lineTo(g.X(c), g.y1);
+          ct.stroke(); ct.setLineDash([]);
+        });
+
+        /* as tangentes já percorridas, esmaecidas, e a próxima em destaque */
+        for (i = 0; i < seq.length; i++) {
+          var xv = seq[i];
+          if (Math.abs(xv) > 3.2) continue;
+          var ult = (i === seq.length - 1);
+          var dv = fl(xv), prox = xv - f(xv) / dv;
+          ct.strokeStyle = ult ? G.COR.roxo : '#d6d9de';
+          ct.lineWidth = ult ? 1.8 : 1;
+          ct.beginPath();
+          ct.moveTo(g.X(xv), g.Y(f(xv)));
+          ct.lineTo(g.X(Math.max(-3.2, Math.min(3.2, prox))), g.Y(0));
+          ct.stroke();
+          /* a vertical do ponto até a curva */
+          ct.strokeStyle = ult ? G.COR.roxo : '#e3e6ea';
+          ct.setLineDash([2, 3]);
+          ct.beginPath(); ct.moveTo(g.X(xv), g.Y(0)); ct.lineTo(g.X(xv), g.Y(f(xv)));
+          ct.stroke(); ct.setLineDash([]);
+          ct.fillStyle = ult ? G.COR.roxo : '#b9bec6';
+          ct.beginPath(); ct.arc(g.X(xv), g.Y(0), ult ? 4 : 2.5, 0, 2 * Math.PI);
+          ct.fill();
+        }
+        ct.restore();
+        rotulo(ct, 'x₀', g.X(x0), g.Y(0) + 17, G.COR.roxo, 'center');
+        /* dentro do quadro e no alto, para nao bater na linha das marcas */
+        rotulo(ct, 'f\u2032 = 0', g.X(RC) + 5, g.y0 + 10, '#9aa6b1', 'left');
+        rotulo(ct, 'f\u2032 = 0', g.X(-RC) - 5, g.y0 + 10, '#9aa6b1', 'right');
+      } else {
+        /* a faixa das bacias: cada coluna de pixel é um ponto de partida */
+        var y0b = p.A * 0.30, hb = p.A * 0.30;
+        var L = p.L - 50, ox = 30;
+        ct.save();
+        for (var c = 0; c < L; c++) {
+          var xs = -3.2 + 6.4 * c / (L - 1);
+          var k2 = destino(xs);
+          ct.fillStyle = k2 < 0 ? '#e9ecef' : CORES[k2];
+          ct.fillRect(ox + c, y0b, 1, hb);
+        }
+        ct.restore();
+        /* a escala e as raízes marcadas por baixo */
+        var Xb = function (v) { return ox + (v + 3.2) / 6.4 * (L - 1); };
+        ct.save();
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 1;
+        ct.beginPath(); ct.moveTo(ox, y0b + hb); ct.lineTo(ox + L, y0b + hb);
+        ct.stroke();
+        [-3, -2, -1, 0, 1, 2, 3].forEach(function (t) {
+          ct.beginPath(); ct.moveTo(Xb(t), y0b + hb); ct.lineTo(Xb(t), y0b + hb + 5);
+          ct.stroke();
+          rotulo(ct, String(t), Xb(t), y0b + hb + 17, G.COR.suave, 'center');
+        });
+        RAIZES.forEach(function (r, i) {
+          ct.fillStyle = CORES[i];
+          ct.beginPath(); ct.arc(Xb(r), y0b - 9, 4, 0, 2 * Math.PI); ct.fill();
+        });
+        /* o que importa aqui nao sao os pontos criticos, e sim a orbita
+           de periodo 2 do mapa de Newton, em x = +-1: N(1) = -1 e
+           N(-1) = 1. E nela que as faixas se acumulam. */
+        [-1, 1].forEach(function (c2) {
+          ct.strokeStyle = G.COR.tinta; ct.lineWidth = 1; ct.setLineDash([2, 2]);
+          ct.beginPath(); ct.moveTo(Xb(c2), y0b - 4); ct.lineTo(Xb(c2), y0b + hb + 4);
+          ct.stroke(); ct.setLineDash([]);
+          rotulo(ct, 'ciclo 2', Xb(c2), y0b - 8, G.COR.tinta, 'center');
+        });
+        /* onde está o x0 escolhido */
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2;
+        ct.beginPath(); ct.moveTo(Xb(x0), y0b - 2); ct.lineTo(Xb(x0), y0b + hb + 2);
+        ct.stroke();
+        ct.restore();
+        rotulo(ct, 'cada coluna é um ponto de partida, pintado com a cor da '
+               + 'raiz a que Newton leva', p.L / 2, p.A - 6, '#6b7682',
+               'center', 'bottom');
+      }
+
+      var nomes = ['−√5', '0', '+√5'];
+      mostrar({
+        n: String(passos),
+        x: N.fmt(xa, 6),
+        e: idx >= 0 ? N.sci(Math.abs(xa - RAIZES[idx]), 2) : '—',
+        r: idx >= 0 ? nomes[idx] : 'nenhuma'
+      });
+
+      if (vista === 0) {
+        var err = idx >= 0 ? Math.abs(xa - RAIZES[idx]) : NaN;
+        saida.innerHTML =
+          'A reta roxa é a tangente em \\(x_n\\); onde ela corta o eixo está '
+          + '\\(x_{n+1}\\). Toda a ideia de Newton está aí: trocar a função pela sua '
+          + 'tangente e resolver o problema linear, que é fácil. '
+          + (passos === 0
+            ? 'Clique em <em>Dar um passo</em> para ver o erro encolher.'
+            : 'Repare no cartão do erro: a cada passo o número de zeros depois da '
+              + 'vírgula praticamente <strong>dobra</strong>, e é isso que significa '
+              + 'convergência quadrática.')
+          + ' As duas verticais pontilhadas marcam onde \\(f\'=0\\): comece perto '
+          + 'de uma delas e o primeiro passo joga o chute para longe.';
+      } else {
+        saida.innerHTML =
+          'Cada coluna é um \\(x_0\\), pintado com a cor da raiz a que Newton chega. '
+          + 'Na maior parte da reta a resposta é a esperada, e cada ponto vai para a '
+          + 'raiz mais próxima. As exceções se concentram em \\(x=\\pm 1\\), e não '
+          + 'nos pontos onde \\(f\'=0\\): ali está a <strong>órbita de período 2</strong> '
+          + 'do mapa de Newton, \\(N(x)=2x^3/(3x^2-5)\\), que leva \\(1\\) em '
+          + '\\(-1\\) e \\(-1\\) em \\(1\\). Ela é repelente, com multiplicador 36, '
+          + 'e as faixas se acumulam sobre ela. '
+          + 'Ampliando em torno de \\(x=1\\), aparecem de seis a sete faixas em '
+          + '<em>cada</em> escala, de \\(10^{-1}\\) a \\(10^{-10}\\): a estrutura '
+          + 'não termina. É o mesmo mecanismo do limiar do arco-tangente da seção 6, '
+          + 'que também é uma órbita de período 2, e é por isso que um método robusto '
+          + 'mantém sempre um intervalo com troca de sinal.';
+      }
+      tipografar(saida);
+      tipografar(raiz);
+      void dx0;
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {
