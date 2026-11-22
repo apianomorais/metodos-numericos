@@ -1,0 +1,228 @@
+# -*- coding: utf-8 -*-
+"""Confere as invariantes estruturais de todas as paginas do site."""
+import glob, os, re, sys
+
+erros = []
+avisos = []
+paginas = sorted(glob.glob('*.html'))
+css = open('assets/css/estilo.css', encoding='utf-8').read()
+
+for p in paginas:
+    t = open(p, encoding='utf-8').read()
+
+    # 1. links internos resolvem
+    for href in re.findall(r'href="([^"#:]+\.html)(#[^"]*)?"', t):
+        if not os.path.exists(href[0]):
+            erros.append('%s: link quebrado para %s' % (p, href[0]))
+    for anc in re.findall(r'href="#([^"]+)"', t):
+        if 'id="%s"' % anc not in t:
+            erros.append('%s: âncora #%s não existe' % (p, anc))
+
+    # 2. recursos locais existem
+    for src in re.findall(r'(?:src|href)="(assets/[^"?]+)', t):
+        if not os.path.exists(src):
+            erros.append('%s: recurso ausente %s' % (p, src))
+
+    # 3. chapéu combina com o nome do arquivo
+    m = re.match(r'aula(\d{2})\.html$', p)
+    if m:
+        ch = re.search(r'<p class="chapeu">Aula (\d+)', t)
+        if not ch:
+            erros.append('%s: sem chapéu' % p)
+        elif int(ch.group(1)) != int(m.group(1)):
+            erros.append('%s: chapéu diz Aula %s' % (p, ch.group(1)))
+
+        # 4. seções sequenciais e índice lateral igual aos h2
+        h2 = re.findall(r'<h2 id="s(\d+)">(\d+)\. ([^<]+)</h2>', t)
+        nums = [int(a) for a, _, _ in h2]
+        if nums != list(range(1, len(nums) + 1)):
+            erros.append('%s: seções fora de ordem: %s' % (p, nums))
+        for ident, rot, _ in h2:
+            if ident != rot:
+                erros.append('%s: seção #s%s rotulada %s' % (p, ident, rot))
+        lat = re.findall(r'<li><a href="#s(\d+)">(\d+)\.', t)
+        if [a for a, _ in lat] != [a for a, _, _ in h2]:
+            erros.append('%s: índice lateral não bate com os h2' % p)
+
+        # 5. exercícios numerados pelo módulo. Conta as duas formas que o
+        #    site usa: o rótulo "Exercício resolvido N.m" e o "<b>N.m</b>"
+        #    dos propostos. Só a primeira era conferida, e por isso uma
+        #    renumeração de módulos passou batida.
+        achados = (re.findall(r'Exercício resolvido (\d+)\.\d+', t)
+                   + re.findall(r'<b>(\d+)\.\d+</b>', t)
+                   + re.findall(r'<span class="rotulo">(\d+)\.\d+ ', t))
+        for ex in sorted(set(achados)):
+            if int(ex) != int(m.group(1)):
+                erros.append('%s: exercício numerado %s.x' % (p, ex))
+
+    # 6. todo widget citado tem implementação
+    reg = open('assets/js/widgets.js', encoding='utf-8').read()
+    for w in re.findall(r'data-widget="([^"]+)"', t):
+        if 'REGISTRO.%s =' % w not in reg:
+            erros.append('%s: widget "%s" sem implementação' % (p, w))
+
+    # 7. sem travessões no texto corrido
+    # É preferência de estilo, não erro de código, e o texto do autor manda:
+    # entra como aviso e não reprova a validação.
+    for linha in t.split('\n'):
+        if '—' in linha and not re.search(r'<t[dh][^>]*>\s*—\s*</t[dh]>', linha):
+            avisos.append('%s: travessão em "%s"' % (p, linha.strip()[:60]))
+
+    # 8. nenhum caractere de controle: eles aparecem quando \f ou \b do LaTeX
+    #    passam por uma string Python não crua e viram formfeed e backspace
+    for ch in set(c for c in t if ord(c) < 32 and c not in '\t\n'):
+        erros.append('%s: caractere de controle 0x%02x no arquivo '
+                     '(provável \\f ou \\b do LaTeX corrompido)' % (p, ord(ch)))
+
+    # 9. nenhum "<" seguido de letra dentro de matemática: o navegador o lê
+    #    como abertura de tag e come a equação até o próximo ">"
+    for mat in re.finditer(r'\\\((.*?)\\\)|\\\[(.*?)\\\]', t, re.S):
+        trecho = mat.group(1) or mat.group(2) or ''
+        if re.search(r'<(?=[A-Za-z/])', trecho):
+            erros.append('%s: "<" cru antes de letra em "%s" '
+                         '(escreva &lt;)' % (p, trecho.replace('\n', ' ')[:60]))
+
+
+    # 14. escape de Python que nao foi interpretado. Um "\\n" literal no HTML
+    #     aparece como texto na tela, e foi assim que o indice lateral de
+    #     quatro aulas ficou com "\\n" entre os itens durante meses sem que
+    #     nenhuma regra pegasse. Comandos de LaTeX como \\nu e \\nabla sao
+    #     legitimos, e por isso so se cobra o "\\n" que NAO e seguido de letra.
+    sem_codigo = re.sub(r'<(code|pre|script|style)[^>]*>.*?</\1>', '', t,
+                        flags=re.S)
+    for m in re.finditer(r'\\n(?![A-Za-z])', sem_codigo):
+        ini = max(0, m.start() - 30)
+        erros.append('%s: "\\n" literal no HTML, em "...%s..."'
+                     % (p, sem_codigo[ini:m.end() + 20].replace('\n', ' ')))
+    # 15. todo modificador de bloco tem regra no CSS. Sem a regra a página
+    #     continua válida e o bloco some visualmente: fica com a borda e o
+    #     rótulo da cor padrão, como se fosse uma definição.
+    for mod in sorted(set(re.findall(r'class="bloco ([a-z]+)"', t))):
+        if not re.search(r'\.bloco\.%s\b' % mod, css):
+            erros.append('%s: class="bloco %s" sem regra no CSS' % (p, mod))
+
+    # 10. tags equilibradas nos contêineres principais
+    for tag in ('div', 'main', 'section', 'details', 'table'):
+        a = len(re.findall(r'<%s[\s>]' % tag, t))
+        b = len(re.findall(r'</%s>' % tag, t))
+        if a != b:
+            erros.append('%s: <%s> %d aberturas, %d fechamentos' % (p, tag, a, b))
+
+# 16. toda referência a "exercício N.m" aponta para um exercício que
+#     existe. Uma renumeração de módulos quebra isso sem quebrar nada
+#     mais, e a página continua válida apontando para o nada.
+alvos = {}
+for p in paginas:
+    mm = re.match(r'aula(\d+)\.html$', p)
+    if not mm:
+        continue
+    t = open(p, encoding='utf-8').read()
+    alvos[int(mm.group(1))] = (set(re.findall(r'<b>(\d+\.\d+)</b>', t))
+                               | set(re.findall(r'Exercício resolvido (\d+\.\d+)', t))
+                               | set(re.findall(r'<span class="rotulo">(\d+\.\d+) ', t)))
+for p in paginas:
+    t = open(p, encoding='utf-8').read()
+    for ref in sorted(set(re.findall(r'exercícios? (\d+\.\d+)', t))):
+        mod = int(ref.split('.')[0])
+        if mod not in alvos or ref not in alvos[mod]:
+            erros.append('%s: cita exercício %s, que não existe' % (p, ref))
+
+# 11. nos widgets, LaTeX escrito com uma barra invertida só. Dentro de uma
+#     string JavaScript, "\(" vira "(" e "\sigma" vira "sigma": a barra some
+#     antes de o MathJax ver a expressão, e a fórmula chega destruída à
+#     página. Toda barra de LaTeX em widgets.js tem de ser dupla.
+def sem_comentarios(js):
+    """Troca comentario de JavaScript por espaco, preservando as quebras de
+    linha para que os numeros de linha continuem certos.
+
+    As regras abaixo procuram LaTeX escrito com uma barra so dentro de string
+    de JavaScript. Um comentario que CITA LaTeX, como "deixa \\(\\mu_0\\) cru
+    na tela", nao e erro, e era o unico falso positivo que o validador
+    produzia."""
+    saida = []
+    i, n = 0, len(js)
+    estado = None          # None, aspa aberta, '//' ou '/*'
+    while i < n:
+        c = js[i]
+        prox = js[i + 1] if i + 1 < n else ''
+        if estado is None:
+            if c == '/' and prox == '/':
+                estado = '//'; saida.append('  '); i += 2; continue
+            if c == '/' and prox == '*':
+                estado = '/*'; saida.append('  '); i += 2; continue
+            if c in '\'"`':
+                estado = c
+            saida.append(c); i += 1; continue
+        if estado in ('\'', '"', '`'):
+            if c == '\\':
+                saida.append(js[i:i + 2]); i += 2; continue
+            if c == estado:
+                estado = None
+            saida.append(c); i += 1; continue
+        if estado == '//':
+            if c == '\n':
+                estado = None; saida.append(c)
+            else:
+                saida.append(' ')
+            i += 1; continue
+        if c == '*' and prox == '/':
+            estado = None; saida.append('  '); i += 2; continue
+        saida.append('\n' if c == '\n' else ' ')
+        i += 1
+    return ''.join(saida)
+
+
+BARRA = re.compile(r'(?<!\\)\\[(\[\])a-zA-Z]')
+PERMITIDAS = {'\\n', '\\t', '\\r', '\\u', '\\d', '\\s', '\\w', '\\b', '\\f', '\\v'}
+js = os.path.join('assets', 'js', 'widgets.js')
+if os.path.exists(js):
+    tj = sem_comentarios(open(js, encoding='utf-8').read())
+    for m in BARRA.finditer(tj):
+        if m.group(0) in PERMITIDAS:
+            continue
+        linha = tj[:m.start()].count('\n') + 1
+        erros.append('widgets.js:%d: "%s" com uma barra só; o JavaScript a '
+                     'engole antes do MathJax (use barra dupla)'
+                     % (linha, m.group(0)))
+
+# 12. nos widgets, uma macro de LaTeX no fim de um pedaco de string que e
+#     concatenado com outro comecando por letra. O "+" some na juncao e
+#     \quad + 'P=...' vira \quadP, que o MathJax nao conhece e exibe cru.
+#     Basta um espaco antes da aspa de fechamento.
+COLADA = re.compile(r"\\\\[a-zA-Z]+'\s*\+\s*'[a-zA-Z]")
+if os.path.exists(js):
+    tj = sem_comentarios(open(js, encoding='utf-8').read())
+    for m in COLADA.finditer(tj):
+        linha = tj[:m.start()].count('\n') + 1
+        erros.append('widgets.js:%d: "%s" gruda na string seguinte; '
+                     'ponha um espaco antes da aspa'
+                     % (linha, m.group(0).split("'")[0]))
+
+# 13. nos widgets, um "<" solto dentro de texto. O navegador o le como o
+#     inicio de uma tag e engole tudo ate o proximo ">", inclusive a
+#     formula que viesse depois. Escreva &lt;.
+TAGS_OK = {'p', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'span', 'div',
+           'sup', 'sub', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+           'b', 'i', 'code', 'small', 'a', 'h3', 'h4',
+           'input', 'button', 'label', 'canvas', 'select', 'option',
+           'img', 'hr', 'figure', 'figcaption'}
+SOLTO = re.compile(r"<(/?)([a-zA-Z]+)")
+if os.path.exists(js):
+    tj = sem_comentarios(open(js, encoding='utf-8').read())
+    for m in SOLTO.finditer(tj):
+        if m.group(2).lower() in TAGS_OK:
+            continue
+        linha = tj[:m.start()].count('\n') + 1
+        erros.append('widgets.js:%d: "%s" parece um "<" solto em texto; '
+                     'escreva &lt;' % (linha, m.group(0)))
+
+if avisos:
+    print('avisos (não reprovam):')
+    for v in avisos:
+        print('  ' + v)
+
+print('páginas: %d' % len(paginas))
+if erros:
+    print('\n'.join(erros))
+    sys.exit(1)
+print('✓ todas as invariantes passam')
