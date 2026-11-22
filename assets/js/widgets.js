@@ -500,6 +500,165 @@
   };
 
 
+  /* =================================================================
+     3. Runge, Chebyshev e a spline
+     A frase "mais pontos pioram o resultado" é contraintuitiva o
+     bastante para precisar ser vista. O widget põe as três curvas
+     sobre a mesma função e deixa o aluno aumentar o grau: com nós
+     uniformes o polinômio começa a oscilar nas bordas e sai da tela,
+     com nós de Chebyshev ele melhora, e a spline simplesmente
+     converge. A ficha do erro máximo transforma a impressão visual
+     em número.
+     ================================================================= */
+  REGISTRO.runge = function (raiz) {
+    var corpo = moldura(raiz, 'Interpolar a função de Runge');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var n = 12, modo = 0;   /* 0 uniforme, 1 Chebyshev, 2 spline */
+
+    function f(x) { return 1 / (1 + 25 * x * x); }
+
+    function nosUnif(m) {
+      var v = [];
+      for (var i = 0; i <= m; i++) v.push(-1 + 2 * i / m);
+      return v;
+    }
+    function nosCheb(m) {
+      var v = [];
+      for (var i = 0; i <= m; i++) v.push(Math.cos(Math.PI * i / m));
+      return v.sort(function (a, b) { return a - b; });
+    }
+
+    opcoes(corpo, [{ rot: 'Nós uniformes', v: 0 },
+                   { rot: 'Nós de Chebyshev', v: 1 },
+                   { rot: 'Spline cúbica', v: 2 }], 0,
+      function (v) { modo = v; desenhar(); });
+
+    deslizante(corpo, 'Número de nós:', 4, 30, 2, n,
+      function (v) { n = v; desenhar(); },
+      function (v) { return (v + 1) + ' nós, grau ' + v; });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'Erro máximo', k: 'emax' },
+      { rot: 'Erro no miolo', k: 'emeio' },
+      { rot: 'Erro na borda', k: 'eborda' },
+      { rot: 'Sai da tela?', k: 'sai' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var p = G.preparar(cv, Math.min(300, Math.max(230, cv.clientWidth * 0.32)));
+      var xs = modo === 1 ? nosCheb(n) : nosUnif(n);
+      var ys = xs.map(f);
+      var aprox;
+      if (modo === 2) {
+        var sp = N.splineNatural(xs, ys);
+        aprox = sp;
+      } else {
+        aprox = function (x) { return N.lagrange(xs, ys, x); };
+      }
+
+      var g = G.eixos(cv, {
+        altura: p.A, limpar: false,
+        xmin: -1.05, xmax: 1.05, ymin: -0.5, ymax: 1.5,
+        rotX: 'x', rotY: 'f(x)', divY: 4,
+        margem: { e: 50, d: 16, c: 12, b: 34 },
+        marcasX: [-1, -0.5, 0, 0.5, 1].map(function (t) {
+          return { v: t, r: N.fmt(t, 1) };
+        })
+      });
+      var ct = g.ct;
+
+      /* a função verdadeira */
+      ct.save();
+      ct.beginPath();
+      for (var i = 0; i <= 600; i++) {
+        var x = -1.05 + 2.1 * i / 600;
+        if (i === 0) ct.moveTo(g.X(x), g.Y(f(x))); else ct.lineTo(g.X(x), g.Y(f(x)));
+      }
+      ct.strokeStyle = '#aab3bd'; ct.lineWidth = 3; ct.stroke();
+
+      /* a aproximação, cortada no quadro mas sem fingir que ficou dentro */
+      var emax = 0, emeio = 0, eborda = 0, saiu = false;
+      ct.beginPath();
+      var levantar = true;
+      for (i = 0; i <= 900; i++) {
+        x = -1 + 2 * i / 900;
+        var v = aprox(x), e = Math.abs(v - f(x));
+        if (e > emax) emax = e;
+        if (Math.abs(x) < 0.5 && e > emeio) emeio = e;
+        if (Math.abs(x) > 0.85 && e > eborda) eborda = e;
+        if (v < -0.5 || v > 1.5) { saiu = true; levantar = true; continue; }
+        if (levantar) { ct.moveTo(g.X(x), g.Y(v)); levantar = false; }
+        else ct.lineTo(g.X(x), g.Y(v));
+      }
+      ct.strokeStyle = modo === 2 ? G.COR.verde : G.COR.vinho;
+      ct.lineWidth = 2; ct.stroke();
+
+      /* os nós */
+      xs.forEach(function (xv, k) {
+        ct.fillStyle = G.COR.mestra;
+        ct.beginPath(); ct.arc(g.X(xv), g.Y(ys[k]), 3, 0, 2 * Math.PI); ct.fill();
+      });
+      ct.restore();
+
+      /* legenda, sobre um fundo opaco: em grau alto a curva passa por
+         cima dela e sem o fundo os dois textos se embaralham */
+      ct.save();
+      var itens = [{ cor: '#aab3bd', rot: '1/(1+25x²)' },
+                   { cor: modo === 2 ? G.COR.verde : G.COR.vinho,
+                     rot: modo === 2 ? 'spline' : 'polinômio' }];
+      ct.fillStyle = 'rgba(255,255,255,0.88)';
+      ct.fillRect(g.x0 + 6, g.y0 + 4, 104, 10 + itens.length * 15);
+      itens.forEach(function (it, k) {
+        var yy = g.y0 + 16 + k * 15;
+        ct.fillStyle = it.cor; ct.fillRect(g.x0 + 12, yy - 4, 12, 4);
+        rotulo(ct, it.rot, g.x0 + 29, yy, G.COR.tinta, 'left');
+      });
+      ct.restore();
+
+      mostrar({
+        emax: N.sci(emax, 2),
+        emeio: N.sci(emeio, 2),
+        eborda: N.sci(eborda, 2),
+        sai: saiu ? 'sim' : 'não'
+      });
+
+      var txt;
+      if (modo === 0) {
+        txt = 'Com nós igualmente espaçados, aumente o grau e observe as duas fichas '
+          + 'do meio andarem em <strong>direções opostas</strong>: o erro no miolo cai e '
+          + 'o da borda cresce. É o fenômeno de Runge, e ele não é defeito de '
+          + 'implementação nem acúmulo de arredondamento: o polinômio interpolador é '
+          + 'único, e é ele mesmo que oscila. '
+          + (saiu ? 'Neste grau a curva já sai do quadro; a parte que falta não foi '
+                  + 'cortada por engano, ela está fora da escala.'
+                  : 'Suba o grau até a curva sair do quadro.');
+      } else if (modo === 1) {
+        txt = 'Os mesmos grau e função, com os nós em \\(\\cos(k\\pi/n)\\), que se '
+          + 'aglomeram nas bordas. Agora o erro cai quando o grau sobe, '
+          + 'monotonicamente. A conclusão é que a culpa nunca foi do polinômio, e sim '
+          + 'de <strong>onde se escolheu medir a função</strong>: as bordas precisavam '
+          + 'de mais informação, e os nós uniformes davam a elas a mesma que ao miolo.';
+      } else {
+        txt = 'A spline cúbica usa um polinômio de grau 3 por intervalo, e por isso o '
+          + 'grau não cresce com o número de nós: cresce o número de pedaços. Com os '
+          + '<em>mesmos</em> nós uniformes em que o polinômio único explodia, ela '
+          + 'converge. O preço está nos nós, onde a terceira derivada salta, e nas '
+          + 'pontas, onde a condição natural impõe segunda derivada nula e rebaixa a '
+          + 'ordem de \\(h^4\\) para \\(h^2\\).';
+      }
+      saida.innerHTML = txt;
+      tipografar(saida);
+      tipografar(raiz);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 3: Interpolação e ajuste de curvas | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611220857">
+<script src="assets/js/comum.js?v=202611220857"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
+      <span class="grupo">Métodos</span>
+      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
+      <a href="aula03.html" class="num ativo" title="Aula 3: Interpolação e ajuste de curvas">3</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Duas perguntas que parecem a mesma</a></li>
+    <li><a href="#s2">2. O polinômio interpolador e a forma de Lagrange</a></li>
+    <li><a href="#s3">3. O fenômeno de Runge</a></li>
+    <li><a href="#s4">4. A culpa é dos nós</a></li>
+    <li><a href="#s5">5. Splines cúbicas</a></li>
+    <li><a href="#s6">6. Mínimos quadrados, e Hilbert de volta</a></li>
+    <li><a href="#s7">7. No Spyder</a></li>
+    <li><a href="#s8">8. Exercícios resolvidos</a></li>
+    <li><a href="#s9">9. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 3 · Resolver, interpolar, integrar</p>
+  <h1>Interpolação e ajuste de curvas</h1>
+  <p class="subtitulo">Passar pelos pontos e passar perto deles são problemas diferentes, e a escolha entre os dois não é de gosto: depende de os pontos estarem certos ou não. Resolvida essa pergunta, aparece a segunda, que é mais surpreendente: acrescentar pontos pode piorar o resultado.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Distinguir interpolação de ajuste, e saber qual usar diante de uma tabela;</li>
+      <li>Escrever o polinômio interpolador na forma de Lagrange e saber por que ele é único;</li>
+      <li>Reconhecer o fenômeno de Runge e identificar os nós como a causa;</li>
+      <li>Construir uma spline cúbica e saber o que ela garante e o que não garante;</li>
+      <li>Obter as equações normais e medir o preço de usá-las;</li>
+      <li>Reconhecer a matriz de Hilbert da aula 1 escondida no ajuste polinomial.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Duas perguntas que parecem a mesma</h2>
+
+  <p>Diante de uma tabela de pares \((x_i, y_i)\), a pergunta natural é que curva passa por
+  ali. Ela esconde duas perguntas distintas, e confundi-las é o erro mais comum de quem começa.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Interpolar e ajustar</span>
+    <p><strong>Interpolar</strong> é achar uma função que passe <em>exatamente</em> por todos os
+    pontos. Faz sentido quando os pontos são exatos: uma tabela de valores de uma função
+    conhecida, a saída de outro programa, os vértices de um desenho.</p>
+    <p><strong>Ajustar</strong> é achar, dentro de uma família escolhida de antemão, a função que
+    passa <em>o mais perto possível</em> dos pontos segundo algum critério. Faz sentido quando os
+    pontos têm erro, que é o caso de toda medida.</p>
+  </div>
+
+  <p>A escolha não é estética. Usar interpolação em dados experimentais é exigir que a curva
+  reproduza o ruído, e isso é sempre errado: cada ponto medido carrega um erro independente, e a
+  curva que passa por todos eles necessariamente passeia entre os erros. Usar ajuste onde os
+  dados são exatos joga fora informação que se tinha de graça.</p>
+
+  <p>A seção 7 mede o estrago no caso errado: num decaimento exponencial com 2 % de ruído,
+  interpolar com um polinômio de grau 14 produz erro máximo de 2,2 contra o valor verdadeiro,
+  enquanto um ajuste de <em>dois</em> parâmetros, que não passa por nenhum ponto, erra 0,039. A
+  curva que passa por todos os pontos é cinquenta vezes pior que a que não passa por nenhum.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. O polinômio interpolador e a forma de Lagrange</h2>
+
+  <p>Dados \(n+1\) pontos com abscissas distintas, existe <strong>um e apenas um</strong>
+  polinômio de grau no máximo \(n\) que passa por todos. A existência Lagrange mostra
+  construindo; a unicidade sai de um argumento de três linhas que vale a pena ter em mente.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A unicidade, em três linhas</span>
+    <p>Se \(P\) e \(Q\) são dois polinômios de grau \(\le n\) que passam pelos mesmos \(n+1\)
+    pontos, então \(D = P - Q\) tem grau \(\le n\) e se anula em \(n+1\) pontos distintos. Um
+    polinômio não nulo de grau \(\le n\) tem no máximo \(n\) raízes. Logo \(D \equiv 0\).</p>
+  </div>
+
+  <p>A construção de Lagrange parte de uma ideia simples: montar, para cada nó, um polinômio que
+  vale 1 nele e 0 em todos os outros.</p>
+
+  <p>\[ L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}, \qquad
+     P(x) = \sum_{i=0}^{n} y_i\,L_i(x). \]</p>
+
+  <p>Cada fator do produto se anula num nó diferente, de modo que \(L_i(x_j) = 0\) para
+  \(j\neq i\); e em \(x = x_i\) cada fator vale \(1\), de modo que \(L_i(x_i) = 1\). Somando com
+  pesos \(y_i\), vem \(P(x_j) = y_j\).</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Um teste que passa por construção</span>
+    <p>O programa confere que \(P\) passa pelos nós e obtém <strong>zero exato</strong>, em grau
+    3 e em grau 60, com nós sorteados ao acaso. Isso não é robustez numérica: é estrutural.
+    Avaliando \(L_i\) em \(x_j\), o fator com \(k=j\) vira \((x_j - x_j)\), que é zero exato em
+    ponto flutuante; e em \(x_i\), cada fator é \((x_i-x_k)/(x_i-x_k)\), que é um exato.</p>
+    <p>Vale notar o que esse teste então <em>não</em> testa. Ele não diz nada sobre o que
+    acontece entre os nós, que é o assunto da próxima seção, e passaria igual se os nós
+    estivessem mal escolhidos. Um teste que passa por construção passa também quando o programa
+    está errado por outro motivo, e é por isso que ele não basta.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. O fenômeno de Runge</h2>
+
+  <p>Com o polinômio existindo, sendo único e passando pelos pontos, a expectativa razoável é
+  que usar mais pontos aproxime melhor. A expectativa está errada, e o contraexemplo é de 1901.</p>
+
+  <p>Tome \(f(x) = \dfrac{1}{1+25x^2}\) em \([-1,1]\). É uma função inocente: suave, limitada
+  entre 0 e 1, infinitamente derivável, sem singularidade alguma no intervalo. Interpolando-a em
+  nós igualmente espaçados:</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Mais pontos, pior resultado</span>
+    <table>
+      <tr><th>\(n\)</th><th>erro máximo</th><th>erro no miolo</th><th>erro na borda</th></tr>
+      <tr><td>4</td><td>\(4{,}4\times10^{-1}\)</td><td>\(3{,}6\times10^{-1}\)</td><td>\(4{,}1\times10^{-1}\)</td></tr>
+      <tr><td>8</td><td>\(1{,}0\)</td><td>\(8{,}9\times10^{-2}\)</td><td>\(1{,}0\)</td></tr>
+      <tr><td>12</td><td>\(3{,}7\)</td><td>\(2{,}1\times10^{-2}\)</td><td>\(3{,}7\)</td></tr>
+      <tr><td>16</td><td>\(1{,}4\times10^{1}\)</td><td>\(5{,}2\times10^{-3}\)</td><td>\(1{,}4\times10^{1}\)</td></tr>
+      <tr><td>20</td><td>\(6{,}0\times10^{1}\)</td><td>\(1{,}3\times10^{-3}\)</td><td>\(6{,}0\times10^{1}\)</td></tr>
+      <tr><td>24</td><td>\(2{,}6\times10^{2}\)</td><td>\(3{,}4\times10^{-4}\)</td><td>\(2{,}6\times10^{2}\)</td></tr>
+    </table>
+    <p>As duas colunas do meio andam em <strong>direções opostas</strong>. No miolo o erro cai por
+    um fator de quatro a cada quatro nós, como se espera; na borda ele cresce sem limite. Com 24
+    nós o polinômio erra por centenas numa função que vale no máximo 1.</p>
+  </div>
+
+  <p>Convém dizer o que isso não é. Não é acúmulo de arredondamento, porque acontece igual em
+  precisão arbitrária; não é defeito da fórmula de Lagrange, porque o polinômio interpolador é
+  único e qualquer outra forma de calculá-lo dá o mesmo; e não é a função ser patológica, porque
+  ela é analítica no intervalo inteiro.</p>
+
+  <p>O widget abaixo deixa aumentar o grau e ver a curva sair do quadro.</p>
+
+  <div data-widget="runge"></div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. A culpa é dos nós</h2>
+
+  <p>A fórmula do erro de interpolação explica o que está acontecendo. Para \(f\) com \(n+1\)
+  derivadas contínuas,</p>
+
+  <p>\[ f(x) - P(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}\,\omega(x),
+     \qquad \omega(x) = \prod_{i=0}^{n}(x - x_i), \]</p>
+
+  <p>com \(\xi\) em algum ponto do intervalo. O fatorial no denominador cresce depressa, o que
+  sugere convergência; mas há dois outros fatores, e ambos podem crescer mais depressa ainda.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Os dois culpados</span>
+    <p>O primeiro é \(f^{(n+1)}\). Para a função de Runge, as derivadas sucessivas crescem como
+    \(n!\,5^{n}\), e vencem o \((n+1)!\) do denominador. A função é suave, mas não é suave
+    <em>uniformemente</em> em todas as ordens.</p>
+    <p>O segundo é \(\omega(x)\), o produto das distâncias aos nós, e ele depende só de
+    <strong>onde os nós foram postos</strong>. Com nós uniformes, \(\omega\) é pequeno no miolo e
+    enorme perto das bordas: um ponto no centro tem nós dos dois lados, e um ponto perto de
+    \(\pm1\) tem quase todos os nós de um lado só.</p>
+  </div>
+
+  <p>O segundo culpado é o que se pode consertar, porque a escolha dos nós é nossa. A escolha que
+  minimiza o máximo de \(|\omega|\) é conhecida: os <strong>nós de Chebyshev</strong>,</p>
+
+  <p>\[ x_k = \cos\!\left(\frac{k\pi}{n}\right), \qquad k = 0,1,\ldots,n, \]</p>
+
+  <p>que são as projeções de pontos igualmente espaçados numa semicircunferência, e portanto se
+  aglomeram justamente perto das bordas.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A mesma função, o mesmo grau, só os nós mudaram</span>
+    <table>
+      <tr><th>\(n\)</th><th>nós uniformes</th><th>nós de Chebyshev</th><th>razão</th></tr>
+      <tr><td>8</td><td>\(1{,}0\)</td><td>\(2{,}0\times10^{-1}\)</td><td>\(5\)</td></tr>
+      <tr><td>24</td><td>\(2{,}6\times10^{2}\)</td><td>\(8{,}2\times10^{-3}\)</td><td>\(3{,}1\times10^{4}\)</td></tr>
+      <tr><td>40</td><td>\(1{,}0\times10^{5}\)</td><td>\(3{,}4\times10^{-4}\)</td><td>\(3{,}1\times10^{8}\)</td></tr>
+      <tr><td>60</td><td>\(2{,}3\times10^{8}\)</td><td>\(6{,}4\times10^{-6}\)</td><td>\(3{,}6\times10^{13}\)</td></tr>
+      <tr><td>100</td><td>\(1{,}4\times10^{15}\)</td><td>\(2{,}3\times10^{-9}\)</td><td>\(6{,}0\times10^{23}\)</td></tr>
+    </table>
+    <p>Em grau 100 os dois resultados diferem por vinte e três ordens de grandeza. Nada mudou
+    além das posições em que a função foi medida.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A lição, que vale além desta aula</span>
+    <p>Quando se tem liberdade de escolher <em>onde</em> amostrar uma função, essa escolha pode
+    valer mais que todo o resto do método. Pontos igualmente espaçados são a escolha que não
+    exige pensar, e raramente são a melhor.</p>
+    <p>A mesma ideia reaparece na aula 4: a quadratura gaussiana é exatamente isto aplicado a
+    integrais, e o ganho é da mesma ordem.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Splines cúbicas</h2>
+
+  <p>A outra saída é desistir do polinômio único. Em vez de aumentar o grau, aumenta-se o número
+  de pedaços: um polinômio cúbico por intervalo, colados de modo que a emenda não apareça.</p>
+
+  <p>Com \(n\) intervalos há \(4n\) coeficientes a determinar. As condições são: passar pelos
+  pontos nas duas pontas de cada intervalo (\(2n\) equações), e ter primeira e segunda derivadas
+  contínuas nos \(n-1\) nós internos (\(2n-2\) equações). Faltam duas, e é por isso que existem
+  variantes.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">As duas condições que faltam</span>
+    <ul>
+      <li>A <strong>spline natural</strong> impõe \(S''=0\) nas duas pontas. É a escolha-padrão e
+      não custa informação nenhuma, mas, como a medida mostra, tem preço;</li>
+      <li>A <strong>spline completa</strong>, ou <em>clamped</em>, impõe \(S'\) igual à derivada
+      verdadeira nas pontas. Exige conhecer essa derivada;</li>
+      <li>A condição <em>not-a-knot</em> exige terceira derivada contínua no segundo e no
+      penúltimo nó. É o padrão do MATLAB e do SciPy.</li>
+    </ul>
+  </div>
+
+  <p>O sistema resultante é tridiagonal e se resolve em \(O(n)\) operações pelo algoritmo de
+  Thomas, o que torna a spline barata mesmo com milhares de pontos.</p>
+
+  <h3>O que a spline garante, medido</h3>
+
+  <p>O programa confere a continuidade prometida medindo o salto de cada derivada nos nós
+  internos, por diferença finita com \(h=10^{-7}\). Um salto nulo não aparece como zero nessa
+  medida: ele aparece no nível da resolução, que é \(2h\) vezes a derivada seguinte.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Os saltos</span>
+    <table>
+      <tr><th>Derivada</th><th>salto relativo medido</th><th>resolução da medida</th><th>veredicto</th></tr>
+      <tr><td>primeira</td><td>\(1{,}05\times10^{-5}\)</td><td>\(2h|f''| \approx 1{,}0\times10^{-5}\)</td><td>contínua</td></tr>
+      <tr><td>segunda</td><td>\(2{,}18\times10^{-6}\)</td><td>\(2h|f'''| \approx 8{,}2\times10^{-5}\)</td><td>contínua</td></tr>
+      <tr><td>terceira</td><td>\(2{,}00\)</td><td>—</td><td><strong>salta</strong></td></tr>
+    </table>
+    <p>Os dois primeiros saltos estão no nível da resolução e portanto são nulos até onde dá para
+    ver. O terceiro vale 2,0 em termos relativos e não diminui quando \(h\) diminui: é real. A
+    terceira derivada é a primeira que a spline cúbica não controla, e é por ela que se percebe,
+    olhando com atenção, que a curva é feita de pedaços.</p>
+  </div>
+
+  <h3>A ordem de convergência, e o preço da borda</h3>
+
+  <p>A spline cúbica é de quarta ordem: o erro deve cair por 16 quando o número de nós dobra.
+  Medir isso na função de Runge dá resultado errático, porque o pico em \(x=0\) tem quarta
+  derivada enorme, domina o erro, e o ponto de máximo muda de lugar conforme a malha. Numa função
+  sem pico, \(\sen(3x)e^{-0{,}3x}\), as três medidas se separam:</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Três colunas, três respostas</span>
+    <table>
+      <tr><th>\(n\)</th><th>natural</th><th>razão</th><th>natural, só no miolo</th><th>razão</th><th>clamped</th><th>razão</th></tr>
+      <tr><td>16</td><td>\(3{,}25\times10^{-3}\)</td><td>4,5</td><td>\(6{,}2\times10^{-4}\)</td><td>9,1</td><td>\(6{,}6\times10^{-5}\)</td><td>18,5</td></tr>
+      <tr><td>32</td><td>\(7{,}93\times10^{-4}\)</td><td>4,1</td><td>\(1{,}2\times10^{-5}\)</td><td>52,3</td><td>\(4{,}0\times10^{-6}\)</td><td>16,4</td></tr>
+      <tr><td>64</td><td>\(1{,}97\times10^{-4}\)</td><td>4,0</td><td>\(3{,}1\times10^{-7}\)</td><td>38,8</td><td>\(2{,}5\times10^{-7}\)</td><td>16,1</td></tr>
+      <tr><td>128</td><td>\(4{,}92\times10^{-5}\)</td><td>4,0</td><td>\(1{,}6\times10^{-8}\)</td><td>19,6</td><td>\(1{,}6\times10^{-8}\)</td><td>16,0</td></tr>
+    </table>
+    <p>A spline natural converge com razão 4,0, isto é, em \(h^2\). A <em>mesma</em> spline,
+    medida só no miolo, converge muito mais depressa. E a spline clamped, que recebe a derivada
+    verdadeira nas pontas, converge com razão 16,0 em todo o intervalo, que é a ordem \(h^4\)
+    prevista pela teoria.</p>
+  </div>
+
+  <p>A conclusão é que a spline cúbica é de quarta ordem, e que a condição natural a rebaixa para
+  segunda. O estrago fica confinado perto das bordas, e por isso a coluna do miolo escapa dele
+  até que o erro de borda alcance o de dentro, o que acontece em \(n=128\), quando as duas
+  últimas colunas passam a coincidir.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Mínimos quadrados, e Hilbert de volta</h2>
+
+  <p>Com dados medidos, o problema muda. Escolhe-se uma família de funções com poucos parâmetros
+  e procura-se o membro da família que minimiza a soma dos quadrados dos resíduos:</p>
+
+  <p>\[ S(\vec{c}) = \sum_{i=1}^{m}\bigl[y_i - \varphi(x_i;\vec{c})\bigr]^2. \]</p>
+
+  <p>Quando \(\varphi\) é linear nos parâmetros, que é o caso do polinômio, derivar \(S\) em
+  relação a cada \(c_k\) e igualar a zero dá um sistema linear, chamado de <strong>equações
+  normais</strong>:</p>
+
+  <p>\[ \Ten{A}^{\mathsf{T}}\Ten{A}\,\vec{c} = \Ten{A}^{\mathsf{T}}\vec{y},
+     \qquad A_{ij} = x_i^{\,j}. \]</p>
+
+  <p>É a forma clássica, está em todo livro, e <strong>não se deve usar</strong>. O motivo
+  aparece quando se mede o número de condição.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O que a medida mostra</span>
+    <table>
+      <tr><th>grau</th><th>\(\kappa(\Ten{A}^{\mathsf{T}}\Ten{A})\)</th><th>\(\kappa(\Ten{A})\)</th><th>razão com \(\kappa(\Ten{A})^2\)</th><th>\(\kappa(\text{Hilbert})\)</th></tr>
+      <tr><td>3</td><td>\(1{,}5\times10^{4}\)</td><td>\(1{,}2\times10^{2}\)</td><td>1,0</td><td>\(1{,}6\times10^{4}\)</td></tr>
+      <tr><td>7</td><td>\(1{,}4\times10^{10}\)</td><td>\(1{,}2\times10^{5}\)</td><td>1,0</td><td>\(1{,}5\times10^{10}\)</td></tr>
+      <tr><td>11</td><td>\(1{,}7\times10^{16}\)</td><td>\(1{,}2\times10^{8}\)</td><td>1,1</td><td>\(1{,}6\times10^{16}\)</td></tr>
+    </table>
+  </div>
+
+  <p>Duas coisas saltam da tabela.</p>
+
+  <p>A primeira é que \(\kappa(\Ten{A}^{\mathsf{T}}\Ten{A})\) é exatamente o <strong>quadrado</strong>
+  de \(\kappa(\Ten{A})\). Quem monta as equações normais está elevando ao quadrado o
+  condicionamento do problema e, pela regra da aula 1, jogando fora <em>metade</em> dos dígitos
+  antes mesmo de começar a resolver.</p>
+
+  <p>A segunda é que a última coluna bate com a primeira. Não é analogia: com os dados em
+  \([0,1]\), a soma \(\sum_i x_i^{\,j+k}\) dividida por \(m\) é uma aproximação da integral
+  \(\int_0^1 x^{j+k}dx = 1/(j+k+1)\). As equações normais na base das potências
+  <strong>são</strong> a matriz de Hilbert, que a aula 1 usou como exemplo de problema sem
+  salvação. Ela não era um exemplo artificial: ela aparece sozinha no primeiro ajuste que se
+  tenta fazer.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O estrago, em dados sem ruído nenhum</span>
+    <table>
+      <tr><th>grau</th><th>erro máx. nos coeficientes, equações normais</th><th>por QR</th></tr>
+      <tr><td>3</td><td>\(6{,}2\times10^{-13}\)</td><td>\(8{,}9\times10^{-16}\)</td></tr>
+      <tr><td>7</td><td>\(4{,}4\times10^{-7}\)</td><td>\(4{,}2\times10^{-12}\)</td></tr>
+      <tr><td>11</td><td>\(6{,}5\times10^{-1}\)</td><td>\(1{,}8\times10^{-9}\)</td></tr>
+    </table>
+    <p>Em grau 11 as equações normais erram o coeficiente em 0,65, num polinômio cujos
+    coeficientes são da ordem de 1: não sobrou dígito nenhum. O QR erra \(1{,}8\times10^{-9}\), e
+    ainda tem nove.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">O que fazer, então</span>
+    <p>A diferença não está na matemática, que é a mesma, e sim em <strong>nunca formar</strong>
+    \(\Ten{A}^{\mathsf{T}}\Ten{A}\). A decomposição QR resolve o problema de mínimos quadrados
+    trabalhando diretamente com \(\Ten{A}\), cujo número de condição é a raiz quadrada do outro.
+    É o que fazem o <code>numpy.linalg.lstsq</code> e o <code>numpy.polyfit</code>.</p>
+    <p>Em paralelo, vale trocar a base: polinômios ortogonais no intervalo dos dados dão uma
+    matriz de projeto bem condicionada desde o início. E vale perguntar se o grau 11 era mesmo
+    necessário, porque quase nunca é.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/interpolacao.py">
+      <span class="numero">Programa</span>
+      <h3>interpolacao.py</h3>
+      <p>Interpola por Lagrange em nós uniformes e de Chebyshev medindo os dois, confere a
+      continuidade e a ordem de convergência da spline, mede o condicionamento das equações
+      normais contra o da matriz de Hilbert, e compara interpolar com ajustar em dados
+      ruidosos.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+  <li>O erro nos nós é zero exato até grau 60, e o programa explica por que isso é estrutural e
+  por que esse teste, sozinho, não garante nada.</li>
+  <li>O erro de Runge cresce de \(4{,}4\times10^{-1}\) a \(1{,}4\times10^{15}\) entre os graus 4
+  e 100 com nós uniformes, e cai de \(4{,}6\times10^{-1}\) a \(2{,}3\times10^{-9}\) com nós de
+  Chebyshev.</li>
+  <li>Os saltos das derivadas da spline, comparados com a resolução da própria medida, separam o
+  que é contínuo do que não é.</li>
+  <li>A ordem da spline: 4,0 para a natural, 16,0 para a clamped.</li>
+  <li>\(\kappa(\Ten{A}^{\mathsf{T}}\Ten{A}) = \kappa(\Ten{A})^2\) em todos os graus, e bate com
+  Hilbert.</li>
+  <li>No decaimento com ruído, o ajuste recupera \(k = 1{,}3033\) contra o valor verdadeiro
+  \(1{,}3\), erro de 0,3 %.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Uma medida que precisou de outro caso de teste</span>
+    <p>A primeira versão do programa media a ordem da spline na própria função de Runge, e as
+    razões saíam 8,1, 1,8, 1,9, 2,9, 5,0, sem padrão. Pior: a spline natural e a clamped davam
+    resultados <em>idênticos</em>, o que parecia dizer que a condição de contorno não importava.</p>
+    <p>Não era isso. O pico de Runge em \(x=0\) tem quarta derivada enorme e domina o erro
+    máximo, escondendo o efeito de borda; as duas splines diferiam perto das pontas, onde o erro
+    era menor, e o máximo, que estava no meio, era o mesmo. Trocando para uma função sem pico, as
+    três colunas se separaram imediatamente e a ordem apareceu limpa.</p>
+    <p>A lição vale para qualquer medida de ordem de convergência: <strong>escolher o caso de
+    teste faz parte de medir</strong>. Um caso difícil demais esconde o que se queria ver.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 3.1 · Quantos pontos para uma tabela de senos</span>
+    <p>Quer-se tabelar \(\sen x\) em \([0, \pi/2]\) com passo uniforme \(h\), de modo que a
+    interpolação linear entre dois valores vizinhos erre menos que \(10^{-6}\). Qual \(h\)?</p>
+
+    <p><strong>A fórmula do erro com dois nós.</strong> Com \(n = 1\), a fórmula da seção 4 dá</p>
+    <p>\[ |f(x) - P(x)| = \frac{|f''(\xi)|}{2}\,|x - x_0||x - x_1|. \]</p>
+
+    <p><strong>O máximo do produto.</strong> Dentro de um intervalo de largura \(h\), o produto
+    \(|x-x_0||x-x_1|\) é máximo no ponto médio, onde cada fator vale \(h/2\), dando \(h^2/4\).</p>
+
+    <p><strong>O máximo da derivada.</strong> \(|f''| = |\sen x| \le 1\) no intervalo.</p>
+
+    <p><strong>Juntando.</strong></p>
+    <p>\[ \text{erro} \le \frac{1}{2}\cdot\frac{h^2}{4} = \frac{h^2}{8} \le 10^{-6}
+       \quad\Longrightarrow\quad h \le \sqrt{8\times10^{-6}} = 2{,}83\times10^{-3}. \]</p>
+    <p>Com \(\pi/2 \approx 1{,}5708\), são \(1{,}5708/0{,}00283 = 556\) intervalos, ou 557
+    valores tabelados.</p>
+
+    <div class="bloco def">
+      <span class="rotulo">O que esse número ensina</span>
+      <p>Para ganhar uma casa decimal é preciso dividir \(h\) por \(\sqrt{10}\), isto é,
+      multiplicar a tabela por 3,16. Interpolação linear é de segunda ordem, e segunda ordem é
+      caro: dez casas exigiriam \(10^{20}\) pontos.</p>
+      <p>É por isso que tabelas antigas de funções traziam, ao lado do valor, as
+      <em>diferenças</em>: elas permitiam interpolação quadrática ou cúbica com a mesma tabela, e
+      cada ordem a mais vale muito mais que multiplicar o número de linhas.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 3.2 · Ajustar uma exponencial, e o que se perde ao linearizar</span>
+    <p>Para ajustar \(y = Ae^{-kx}\) a dados, o caminho usual é tomar logaritmos e fazer um ajuste
+    linear de \(\ln y\) contra \(x\). Mostre que isso <em>não</em> minimiza a mesma coisa que o
+    ajuste direto, e diga quando a diferença importa.</p>
+
+    <p><strong>O que cada um minimiza.</strong> O ajuste direto minimiza</p>
+    <p>\[ S_{\text{dir}} = \sum_i \bigl(y_i - Ae^{-kx_i}\bigr)^2, \]</p>
+    <p>e o linearizado minimiza</p>
+    <p>\[ S_{\log} = \sum_i \bigl(\ln y_i - \ln A + kx_i\bigr)^2. \]</p>
+
+    <p><strong>A relação entre os dois.</strong> Para um resíduo pequeno,
+    \(\ln y_i - \ln \hat{y}_i = \ln(1 + r_i/\hat{y}_i) \approx r_i/\hat{y}_i\), com
+    \(r_i = y_i - \hat{y}_i\). Logo</p>
+    <p>\[ S_{\log} \approx \sum_i \frac{r_i^2}{\hat{y}_i^{\,2}}. \]</p>
+
+    <p><strong>Leitura.</strong> O ajuste linearizado minimiza os resíduos <em>relativos</em>, e o
+    direto minimiza os <em>absolutos</em>. São problemas diferentes com respostas diferentes, e
+    nenhum dos dois é universalmente certo: qual deles usar depende de como o erro de medida se
+    comporta.</p>
+
+    <ul>
+      <li>Se a incerteza de cada ponto é uma fração fixa do valor, que é o caso de um contador de
+      partículas ou de qualquer instrumento com erro percentual, o <strong>linearizado está
+      certo</strong>, porque pesa todos os pontos igualmente na escala em que o erro é
+      uniforme;</li>
+      <li>Se a incerteza é a mesma em valor absoluto para todos os pontos, que é o caso de um
+      ruído de fundo somado ao sinal, o <strong>direto está certo</strong>, e o linearizado dá
+      peso excessivo à cauda, onde \(y\) é pequeno e o erro relativo é enorme.</li>
+    </ul>
+
+    <div class="bloco alerta">
+      <span class="rotulo">E há um detalhe que invalida o linearizado</span>
+      <p>Se algum \(y_i\) for negativo, e com ruído de fundo na cauda isso acontece, o logaritmo
+      não existe. A prática comum de descartar esses pontos é a pior saída possível: ela remove
+      seletivamente as flutuações para baixo e mantém as para cima, <strong>enviesando o
+      ajuste</strong> de maneira sistemática.</p>
+      <p>Quando houver pontos assim, o ajuste tem de ser direto, com <code>curve_fit</code>, e
+      com pesos vindos das incertezas de cada ponto.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>3.1</b> Reproduza a tabela de Runge do programa e acrescente uma coluna com a
+      constante de Lebesgue dos nós, \(\Lambda_n = \max_x \sum_i |L_i(x)|\). Mostre que ela cresce
+      exponencialmente para nós uniformes e apenas como \(\ln n\) para Chebyshev, e explique por
+      que essa é a medida certa da qualidade de um conjunto de nós.</li>
+
+      <li><b>3.2</b> Implemente a forma baricêntrica da interpolação de Lagrange, que avalia o
+      polinômio em \(O(n)\) em vez de \(O(n^2)\). Compare o tempo com a forma crua para \(n=100\)
+      e 1000 pontos de avaliação, e verifique que as duas dão o mesmo resultado.</li>
+
+      <li><b>3.3</b> Monte uma spline cúbica à mão, resolvendo o sistema tridiagonal pelo
+      algoritmo de Thomas, e compare com a <code>CubicSpline</code> do SciPy nas três condições de
+      contorno. Confira que a sua implementação é \(O(n)\) cronometrando com \(n\) de \(10^3\) a
+      \(10^6\).</li>
+
+      <li><b>3.4</b> Repita a medida da ordem de convergência da spline, mas com a condição
+      <em>not-a-knot</em>, que é o padrão do SciPy. Ela recupera a ordem \(h^4\) sem precisar
+      conhecer a derivada nas pontas? Meça e diga.</li>
+
+      <li><b>3.5</b> Ajuste um polinômio de grau 10 aos mesmos dados pela base das potências e
+      pela base de Chebyshev deslocada para o intervalo. Meça o número de condição da matriz de
+      projeto nos dois casos e compare os coeficientes obtidos. Mostre que os dois polinômios são
+      o mesmo, apesar de os coeficientes serem completamente diferentes.</li>
+
+      <li><b>3.6</b> Gere 30 pontos de uma parábola com ruído e ajuste polinômios de grau 1 a 15.
+      Faça o gráfico do resíduo quadrático médio contra o grau e explique por que ele cai sempre,
+      inclusive depois do grau 2. Em seguida divida os dados em dois conjuntos, ajuste num e meça
+      o resíduo no outro, e mostre que essa segunda curva tem mínimo. Como se chama o que você
+      acabou de fazer?</li>
+
+      <li><b>3.7</b> Uma tabela de calor específico tem medidas a cada 50 K, de 300 a 900 K, e
+      você precisa do valor a 437 K. Compare interpolação linear, cúbica por spline e ajuste
+      polinomial de grau 3, e diga qual você usaria e por quê. Depois suponha que as medidas têm
+      1 % de incerteza e refaça a escolha.</li>
+
+      <li><b>3.8</b> Em meia página: a aula afirma que a matriz de Hilbert "aparece sozinha" no
+      ajuste polinomial. Mostre a conta que liga as duas, partindo de
+      \(\sum_i x_i^{\,j+k}\) com \(x_i\) uniformes em \([0,1]\), e diga o que muda se os dados
+      estiverem em \([-1,1]\) em vez de \([0,1]\). Confira numericamente.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula02.html"><small>Aula anterior</small>← 2. Raízes</a>
+    <span class="em-breve"><small>Em preparação</small>4. Integração</span>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611220857"></script>
+</body>
+</html>
