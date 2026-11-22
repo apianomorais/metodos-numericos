@@ -1487,6 +1487,205 @@
     registrarRedesenho(desenhar);
   };
 
+  /* ------------------------------------------------------------------
+     A bisseção: o intervalo encolhendo, e o erro garantido contra o
+     erro real. A segunda vista é a que importa, porque mostra que a
+     cota é cota e não igualdade.
+     ------------------------------------------------------------------ */
+  REGISTRO.bissecao = function (raiz) {
+    var corpo = moldura(raiz, 'O intervalo cai pela metade, sempre');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var qual = 0, k = 4, vista = 0;
+
+    var FUNCS = [
+      { rot: 'x³ − 9x + 3', f: function (x) { return x * x * x - 9 * x + 3; },
+        a: 0, b: 1, r: 0.3376089559658378 },
+      { rot: 'Wien', f: function (x) { return (x - 5) * Math.exp(x) + 5; },
+        a: 4, b: 6, r: 4.965114231744276 },
+      { rot: 'cos x − x', f: function (x) { return Math.cos(x) - x; },
+        a: 0, b: 2, r: 0.7390851332151607 }
+    ];
+
+    /* devolve a lista de (a, b, x) dos n primeiros passos */
+    function passos(o, n) {
+      var a = o.a, b = o.b, fa = o.f(a), lista = [], i;
+      for (i = 0; i < n; i++) {
+        var x = (a + b) / 2, fx = o.f(x);
+        lista.push({ a: a, b: b, x: x });
+        if (fa * fx < 0) { b = x; } else { a = x; fa = fx; }
+      }
+      lista.push({ a: a, b: b, x: (a + b) / 2 });
+      return lista;
+    }
+
+    opcoes(corpo, [{ rot: 'O intervalo', v: 0 },
+                   { rot: 'Garantido e real', v: 1 }], 0,
+      function (v) { vista = v; desenhar(); });
+
+    opcoes(corpo, FUNCS.map(function (o, i) { return { rot: o.rot, v: i }; }), 0,
+      function (v) { qual = v; desenhar(); });
+
+    var dK = deslizante(corpo, 'Iterações:', 1, 20, 1, 4,
+      function (v) { k = v; desenhar(); });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'a', k: 'a' }, { rot: 'b', k: 'b' },
+      { rot: 'ponto médio', k: 'x' }, { rot: 'erro garantido', k: 'e' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var o = FUNCS[qual];
+      var lista = passos(o, 20);
+      var at = lista[k];
+      var p = G.preparar(cv, Math.min(280, Math.max(210, cv.clientWidth * 0.30)));
+      dK.parentNode.style.display = vista === 0 ? '' : 'none';
+      var g, ct, i;
+
+      if (vista === 0) {
+        /* escala de y pela funcao no intervalo inicial */
+        var lo = Infinity, hi = -Infinity;
+        for (i = 0; i <= 200; i++) {
+          var v = o.f(o.a + (o.b - o.a) * i / 200);
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        }
+        var mg = 0.12 * (hi - lo);
+        g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: o.a - 0.04 * (o.b - o.a), xmax: o.b + 0.04 * (o.b - o.a),
+          ymin: lo - mg, ymax: hi + mg,
+          rotX: 'x', rotY: 'f(x)', divY: 4,
+          margem: { e: 56, d: 16, c: 12, b: 34 },
+          formataY: function (v) { return N.fmt(v, Math.abs(hi - lo) > 20 ? 0 : 1); }
+        });
+        ct = g.ct; ct.save();
+
+        /* a faixa do intervalo atual */
+        ct.fillStyle = 'rgba(140,47,57,0.10)';
+        ct.fillRect(g.X(at.a), g.y0, g.X(at.b) - g.X(at.a), g.y1 - g.y0);
+
+        /* o eixo zero */
+        ct.strokeStyle = G.COR.clara; ct.lineWidth = 1;
+        ct.beginPath(); ct.moveTo(g.x0, g.Y(0)); ct.lineTo(g.x1, g.Y(0));
+        ct.stroke();
+
+        /* a funcao */
+        ct.beginPath();
+        for (i = 0; i <= 300; i++) {
+          var xx = o.a + (o.b - o.a) * i / 300;
+          if (i === 0) ct.moveTo(g.X(xx), g.Y(o.f(xx)));
+          else ct.lineTo(g.X(xx), g.Y(o.f(xx)));
+        }
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2.2; ct.stroke();
+
+        /* as bordas e o ponto medio */
+        [[at.a, G.COR.mestra, 'a'], [at.b, G.COR.mestra, 'b'],
+         [at.x, G.COR.vinho, 'x']].forEach(function (t) {
+          ct.strokeStyle = t[1]; ct.lineWidth = t[2] === 'x' ? 1.8 : 1.2;
+          ct.setLineDash(t[2] === 'x' ? [] : [4, 3]);
+          ct.beginPath(); ct.moveTo(g.X(t[0]), g.y0); ct.lineTo(g.X(t[0]), g.y1);
+          ct.stroke(); ct.setLineDash([]);
+          rotulo(ct, t[2], g.X(t[0]), g.y0 + 11, t[1], 'center');
+        });
+        ct.fillStyle = G.COR.vinho;
+        ct.beginPath(); ct.arc(g.X(at.x), g.Y(o.f(at.x)), 4, 0, 2 * Math.PI);
+        ct.fill();
+        ct.restore();
+
+        mostrar.rotular(['a', 'b', 'ponto médio', 'erro garantido']);
+        mostrar({
+          a: N.fmt(at.a, 9), b: N.fmt(at.b, 9), x: N.fmt(at.x, 9),
+          e: N.sci((at.b - at.a) / 2, 2)
+        });
+
+        saida.innerHTML =
+          'Depois de ' + k + ' iteraç' + (k === 1 ? 'ão' : 'ões')
+          /* N.sci devolve HTML com <sup>, que nao pode entrar em modo
+             matematico: dentro de \( \) o MathJax nao o processa e o
+             delimitador sobra cru na pagina */
+          + ', o intervalo mede ' + N.sci(at.b - at.a, 2)
+          + ', que é a largura inicial dividida por \\(2^{' + k + '}\\). A raiz '
+          + 'está dentro dele, e isso é <strong>garantido</strong>, não estimado: '
+          + 'o erro do ponto médio é no máximo metade dessa largura. Nenhum dos '
+          + 'métodos das próximas aulas promete isso.';
+      } else {
+        g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: 0, xmax: 20, ymin: -8, ymax: 1,
+          rotX: 'iterações', rotY: 'log₁₀ do erro', divY: 3,
+          margem: { e: 52, d: 16, c: 12, b: 36 },
+          marcasX: [0, 5, 10, 15, 20].map(function (v) {
+            return { v: v, r: String(v) };
+          }),
+          formataY: function (v) { return String(Math.round(v)); }
+        });
+        ct = g.ct; ct.save();
+        ct.beginPath();
+        ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+        ct.clip();
+        [['cota', function (t) { return (t.b - t.a) / 2; }, G.COR.mestra],
+         ['real', function (t) { return Math.abs(t.x - o.r); }, G.COR.vinho]
+        ].forEach(function (par) {
+          ct.beginPath();
+          lista.forEach(function (t, j) {
+            var Y = Math.log10(Math.max(par[1](t), 1e-17));
+            if (j === 0) ct.moveTo(g.X(j), g.Y(Y)); else ct.lineTo(g.X(j), g.Y(Y));
+          });
+          ct.strokeStyle = par[2]; ct.lineWidth = 2.2; ct.stroke();
+          lista.forEach(function (t, j) {
+            ct.fillStyle = par[2];
+            ct.beginPath();
+            ct.arc(g.X(j), g.Y(Math.log10(Math.max(par[1](t), 1e-17))), 2.6,
+                   0, 2 * Math.PI);
+            ct.fill();
+          });
+        });
+        ct.restore();
+        ct.save();
+        [['cota (b−a)/2', G.COR.mestra], ['erro real |x−r|', G.COR.vinho]
+        ].forEach(function (it, j) {
+          var yy = g.y1 - 26 + j * 14;
+          ct.fillStyle = 'rgba(255,255,255,0.92)';
+          ct.fillRect(g.x0 + 6, yy - 10, 118, 14);
+          ct.fillStyle = it[1]; ct.fillRect(g.x0 + 12, yy - 4, 11, 3.5);
+          rotulo(ct, it[0], g.x0 + 29, yy, G.COR.tinta, 'left');
+        });
+        ct.restore();
+
+        /* quantas vezes o erro real ficou abaixo da cota */
+        var viola = 0, raz = [];
+        lista.forEach(function (t) {
+          var c = (t.b - t.a) / 2, e = Math.abs(t.x - o.r);
+          if (e > c * 1.0000001) viola++;
+          if (c > 0) raz.push(e / c);
+        });
+        var media = raz.reduce(function (s2, v) { return s2 + v; }, 0) / raz.length;
+        mostrar.rotular(['violações da cota', 'razão média real/cota',
+                         'inclinação da cota', 'inclinação do erro real']);
+        mostrar({
+          a: String(viola), b: N.fmt(media, 3), e: '−0,301', x: '−0,301'
+        });
+
+        saida.innerHTML =
+          'A linha cinza é a cota, \\((b-a)/2^{k+1}\\), e a vinho é o erro '
+          + 'de verdade. A cota <strong>nunca</strong> é violada, e em média o '
+          + 'erro real é ' + N.pct(media, 0) + ' dela: uma cota que fosse '
+          + 'atingida sempre não seria cota, seria igualdade. As duas descem '
+          + 'com a mesma inclinação média, \\(-\\log_{10}2 = -0{,}301\\) por '
+          + 'iteração, que é o 0,3 dígito decimal por passo. O erro real '
+          + 'oscila em torno da reta porque a raiz ora cai perto do meio do '
+          + 'intervalo, ora perto da borda.';
+      }
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {

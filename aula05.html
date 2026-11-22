@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aula 5: Newton-Raphson e a secante | Métodos Numéricos</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611221024">
-<script src="assets/js/comum.js?v=202611221024"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221036">
+<script src="assets/js/comum.js?v=202611221036"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -21,6 +21,7 @@
       <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
       <a href="aula03.html" class="num" title="Aula 3: Erros numéricos e propagação">3</a>
       <span class="grupo">Raízes</span>
+      <a href="aula04.html" class="num" title="Aula 4: O método da bisseção">4</a>
       <a href="aula05.html" class="num ativo" title="Aula 5: Newton-Raphson e a secante">5</a>
       <span class="grupo">Interpolar</span>
       <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
@@ -371,7 +372,48 @@
   <h2 id="s7">7. Exercícios resolvidos</h2>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 5.1 · Por que a raiz dupla estraga Newton</span>
+    <span class="rotulo">Exercício resolvido 5.1 · A lei de deslocamento de Wien</span>
+    <p>A lei de Planck, derivada em relação ao comprimento de onda e igualada a zero, leva a
+    \(5(1-e^{-x}) = x\) com \(x = hc/\lambda_{\max}k_BT\). Resolva, obtenha a constante de Wien e
+    confira contra o valor tabelado \(2{,}897771955\times10^{-3}\) m·K.</p>
+
+    <p><strong>Localizar a raiz primeiro.</strong> Escreva \(g(x) = 5(1-e^{-x}) - x\). Note que
+    \(g(0) = 0\): a raiz \(x=0\) existe e é espúria, pois corresponde a
+    \(\lambda\to\infty\). A raiz que interessa é a outra. Como \(g(4) = 0{,}908\) e
+    \(g(6) = -1{,}012\), ela está em \([4,6]\).</p>
+
+    <p><strong>Por Newton.</strong> Com \(g'(x) = 5e^{-x} - 1\), partindo de \(x_0 = 5\):</p>
+    <table>
+      <tr><th>\(n\)</th><th>\(x_n\)</th><th>\(g(x_n)\)</th></tr>
+      <tr><td>0</td><td>5,000000000</td><td>\(-3{,}369\times10^{-2}\)</td></tr>
+      <tr><td>1</td><td>4,965135696</td><td>\(-2{,}072\times10^{-5}\)</td></tr>
+      <tr><td>2</td><td>4,965114232</td><td>\(-8{,}036\times10^{-12}\)</td></tr>
+      <tr><td>3</td><td>4,965114232</td><td>\(8{,}9\times10^{-16}\)</td></tr>
+    </table>
+    <p>Três iterações, e a duplicação de dígitos é visível na coluna do resíduo: o expoente vai
+    de 2 para 5, de 5 para 12, e de 12 para o fim da precisão. Dobrar o número de dígitos
+    corretos é literalmente o que está acontecendo ali.</p>
+
+    <p><strong>A constante.</strong> De \(x = hc/\lambda_{\max}k_BT\) vem
+    \(\lambda_{\max}T = hc/(k_B x)\):</p>
+    <p>\[ b = \frac{hc}{k_B x} = \frac{(6{,}62607015\times10^{-34})(2{,}99792458\times10^{8})}
+       {(1{,}380649\times10^{-23})(4{,}965114232)} = 2{,}897771955\times10^{-3}\ \text{m}\cdot\text{K}. \]</p>
+    <p>O valor obtido é \(2{,}897771955185\times10^{-3}\), que concorda com o tabelado em
+    todos os seus dez dígitos. Não é coincidência: o valor tabelado <em>é</em> esta conta, e
+    refazê-la serve para conferir que o método, as constantes e a raiz estão todos certos.</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">O cuidado com a raiz espúria</span>
+      <p>Partindo de \(x_0 = 1\), Newton converge para \(x = 0\), que é raiz legítima da equação
+      e resposta errada do problema de física. Nenhuma propriedade matemática distingue as duas:
+      quem distingue é quem montou o problema. Essa é a diferença entre resolver a equação e
+      resolver o problema, e é a razão de localizar a raiz com um esboço antes de chamar o
+      método.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 5.2 · Por que a raiz dupla estraga Newton</span>
     <p>Mostre que, numa raiz de multiplicidade \(m\), Newton converge linearmente com taxa
     \(1 - 1/m\), e proponha a correção.</p>
 
@@ -455,7 +497,7 @@
   </div>
 
   <nav class="nav-aulas">
-    <a href="aula03.html"><small>Aula anterior</small>← 3. Erros</a>
+    <a href="aula04.html"><small>Aula anterior</small>← 4. Bisseção</a>
     <a class="prox" href="aula09.html"><small>Próxima aula</small>9. Interpolação e ajuste →</a>
   </nav>
 
@@ -469,6 +511,6 @@
   <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
 </footer>
 
-<script src="assets/js/widgets.js?v=202611221024"></script>
+<script src="assets/js/widgets.js?v=202611221036"></script>
 </body>
 </html>

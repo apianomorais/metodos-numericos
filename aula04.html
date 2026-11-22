@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 4: O método da bisseção | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221036">
+<script src="assets/js/comum.js?v=202611221036"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Erros numéricos e propagação">3</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula04.html" class="num ativo" title="Aula 4: O método da bisseção">4</a>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. O problema, e por que ele não se resolve de cabeça</a></li>
+    <li><a href="#s2">2. Bolzano, e as duas vezes em que ele não serve</a></li>
+    <li><a href="#s3">3. Isolar antes de refinar</a></li>
+    <li><a href="#s4">4. O algoritmo</a></li>
+    <li><a href="#s5">5. Quantas iterações, sabidas de antemão</a></li>
+    <li><a href="#s6">6. Critérios de parada, e onde o laço trava</a></li>
+    <li><a href="#s7">7. O que a bisseção não vê, e por que isso a protege</a></li>
+    <li><a href="#s8">8. Wien, e a temperatura do Sol</a></li>
+    <li><a href="#s9">9. No Spyder</a></li>
+    <li><a href="#s10">10. Exercícios resolvidos</a></li>
+    <li><a href="#s11">11. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 4 · Raízes de equações</p>
+  <h1>O método da bisseção</h1>
+  <p class="subtitulo">É o método mais lento da unidade e o único que não falha nunca. Ele também é o único que diz, antes de começar, quantas iterações vai gastar e qual será o erro: isso não é pouca coisa, e as próximas três aulas vão trocar essa garantia por velocidade.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Enunciar o teorema de Bolzano e reconhecer os dois casos em que ele não se aplica;</li>
+      <li>Isolar raízes por varredura, e saber o que a varredura deixa passar;</li>
+      <li>Implementar a bisseção e prever o número de iterações antes de rodar;</li>
+      <li>Escolher critérios de parada que não travem nem parem cedo demais;</li>
+      <li>Explicar por que a bisseção é imune a reescritas da função, e Newton não é;</li>
+      <li>Medir a temperatura da fotosfera solar a partir da lei de Planck.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. O problema, e por que ele não se resolve de cabeça</h2>
+
+  <p>Dada \(f:\R\to\R\), achar \(r\) tal que \(f(r) = 0\). O enunciado é curto e a dificuldade
+  é desproporcional a ele.</p>
+
+  <p>Para polinômios de grau até quatro existe fórmula fechada, e Abel e Ruffini mostraram no
+  começo do século XIX que de grau cinco em diante não existe, nem pode existir, fórmula geral
+  por radicais. Isso já encerraria o assunto, mas o caso que aparece na prática é ainda menos
+  favorável: equações que misturam polinômios com exponenciais, logaritmos ou funções
+  trigonométricas, para as quais nunca houve esperança de fórmula.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Três que aparecem em Física</span>
+    <ul>
+      <li>A <strong>lei de deslocamento de Wien</strong> sai de \((x-5)e^{x} + 5 = 0\), cuja
+      raiz \(x = 4{,}965\ldots\) não tem forma fechada em funções elementares, e é o exemplo
+      que a seção 8 resolve de ponta a ponta;</li>
+      <li>A <strong>equação de Kepler</strong>, \(M = E - e\sen E\), que dá a posição de um
+      planeta na órbita, precisa ser invertida numericamente a cada ponto da trajetória;</li>
+      <li>A <strong>equação de van der Waals</strong>, resolvida para o volume molar, é cúbica
+      em \(V\) e volta na aula 5.</li>
+    </ul>
+  </div>
+
+  <p>A estratégia comum a todos os métodos desta unidade é a mesma de quase todo método
+  numérico: construir uma sequência \(x_0, x_1, x_2,\ldots\) que convirja para \(r\), e parar
+  quando o erro for aceitável. A diferença entre eles está em como cada passo é dado, e o preço
+  de cada escolha aparece em duas moedas: quantas iterações são necessárias, e o que pode dar
+  errado.</p>
+
+  <p>A bisseção paga caro na primeira moeda e nada na segunda, e é por isso que ela abre a
+  unidade.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Bolzano, e as duas vezes em que ele não serve</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Teorema de Bolzano, ou do valor intermediário</span>
+    <p>Seja \(f\) contínua no intervalo fechado \([a,b]\). Se \(f(a)\cdot f(b) < 0\), então
+    existe pelo menos um \(\xi \in (a,b)\) com \(f(\xi) = 0\).</p>
+    <p>Se, além disso, \(f'\) não troca de sinal em \((a,b)\), a raiz é única.</p>
+  </div>
+
+  <p>A intuição é a de sempre: a curva entra no intervalo de um lado do eixo e sai do outro, e
+  como ela é desenhada sem tirar o lápis do papel, cruza o eixo em algum lugar. As duas
+  hipóteses merecem atenção, porque é nelas que o método falha.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A continuidade é essencial</span>
+    <p>Tome \(f(x) = 1/x\) em \([-1,1]\). O teste de sinal <strong>passa</strong>:
+    \(f(-1) = -1\), \(f(1) = 1\), produto negativo. E não existe raiz nenhuma ali: o que existe
+    é um polo.</p>
+    <p>Rodando a bisseção, o primeiro ponto médio já é \(x = 0\), e \(1/x\) estoura na primeira
+    avaliação. Vale dizer que isso é sorte: o método não devolve uma resposta errada com cara
+    de certa, ele quebra. Com um intervalo ligeiramente assimétrico, como \([-1; 1{,}1]\), ele
+    não quebraria, e convergiria educadamente para o polo.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A recíproca é falsa</span>
+    <p>Tome \(f(x) = x^2\) em \([-1,1]\). Existe raiz, em \(x = 0\), e o teste de sinal
+    <strong>falha</strong>: \(f(-1)f(1) = 1 > 0\).</p>
+    <p>Raiz de multiplicidade par não troca o sinal da função, e a bisseção não tem como
+    encontrá-la. O mesmo vale para multiplicidade 4, 6, e assim por diante. Esse é o primeiro
+    aviso sobre raízes múltiplas, e a aula 8 trata delas a sério.</p>
+  </div>
+
+  <p>Juntando: o teste de sinal não é nem necessário nem suficiente. Ele é suficiente
+  <em>quando</em> a função é contínua, e nunca é necessário. Um esboço do gráfico continua
+  sendo o melhor investimento de tempo antes de qualquer conta.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Isolar antes de refinar</h2>
+
+  <p>Todo método desta unidade precisa de um palpite inicial, e a bisseção precisa de dois. O
+  procedimento usual para obtê-los é tabelar a função numa malha e procurar mudanças de sinal
+  entre pontos consecutivos:</p>
+
+  <pre><code>def localizar(f, a, b, n=100):
+    x = np.linspace(a, b, n + 1)
+    y = f(x)
+    trocas = [(x[i], x[i+1]) for i in range(n) if y[i]*y[i+1] &lt; 0]
+    exatas = [x[i] for i in range(n+1) if y[i] == 0.0]
+    return trocas, exatas</code></pre>
+
+  <p>O segundo retorno não é zelo: ele cobre um caso de falha real, e o programa da seção 9
+  mostra os dois.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Duas maneiras de a varredura não ver a raiz</span>
+    <p><strong>(a) Duas raízes no mesmo subintervalo.</strong> Para
+    \(g(x) = (x-1)(x-1{,}013)\), varrendo \([0,2]\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>subintervalos</th><th>passo</th><th>trocas de sinal detectadas</th></tr>
+      <tr><td>10</td><td>0,2000</td><td>0</td></tr>
+      <tr><td>100</td><td>0,0200</td><td>0</td></tr>
+      <tr><td>150</td><td>0,0133</td><td>0</td></tr>
+      <tr><td>200</td><td>0,0100</td><td>1</td></tr>
+      <tr><td>1000</td><td>0,0020</td><td>1</td></tr>
+    </table>
+    </div>
+    <p>Enquanto o passo é maior que a distância entre as raízes, a função entra e sai do eixo
+    dentro do mesmo pedaço, e o sinal nas pontas não muda. <strong>Nenhum aviso é
+    emitido</strong>: a varredura simplesmente não reporta nada, e quem não desconfia conclui
+    que não há raízes.</p>
+
+    <p><strong>(b) A raiz exatamente num nó.</strong> Para \(h(x) = x - 0{,}5\) em \([0,1]\)
+    com dez subintervalos, o ponto 0,5 é um nó da malha, \(h\) vale zero ali, e o produto
+    \(y_i y_{i+1}\) dá <em>zero</em>, que não é negativo. O teste de troca de sinal perde a
+    raiz justamente por tê-la acertado em cheio. Com onze subintervalos, em que 0,5 não é nó,
+    ele a encontra.</p>
+    <p>É por isso que a varredura precisa do ramo de igualdade, e não só do produto
+    negativo.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. O algoritmo</h2>
+
+  <p>A ideia é a de quem procura uma palavra no dicionário: abre no meio, decide se a palavra
+  está antes ou depois, e repete com a metade que interessa.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O método</span>
+    <p>Dados \(f\) contínua em \([a,b]\) com \(f(a)f(b) < 0\):</p>
+    <ol>
+      <li>Calcule \(x_k = (a_k+b_k)/2\);</li>
+      <li>Se \(f(a_k)\,f(x_k) < 0\), a raiz está em \([a_k, x_k]\); caso contrário, em
+      \([x_k, b_k]\);</li>
+      <li>Repita com o novo intervalo.</li>
+    </ol>
+    <p>Depois de \(k\) passos,</p>
+    <p>\[ b_k - a_k = \frac{b_0-a_0}{2^{k}}, \qquad
+       |x_k - \xi| \le \frac{b_0-a_0}{2^{k+1}}. \]</p>
+  </div>
+
+  <p>A segunda desigualdade é o ponto alto do método, e convém dizer por quê. Ela é um
+  <strong>limite garantido</strong>, válido antes de rodar, e que não depende da função: vale
+  para \(\sen x\), para um polinômio de grau 40, e para qualquer coisa contínua que troque de
+  sinal. Nenhum outro método desta unidade promete nada parecido.</p>
+
+  <div data-widget="bissecao"></div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Quantas iterações, sabidas de antemão</h2>
+
+  <p>Invertendo a desigualdade do erro, o número de iterações para levar o intervalo abaixo de
+  \(\varepsilon\) é</p>
+
+  <p>\[ k > \log_2\!\left(\frac{b_0-a_0}{\varepsilon}\right). \]</p>
+
+  <p>Confrontando a previsão com a contagem medida pelo programa:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>função</th><th>intervalo</th><th>tolerância</th><th>previsto</th><th>medido</th></tr>
+    <tr><td>\(x^3-9x+3\)</td><td>\([0,1]\)</td><td>\(10^{-6}\)</td><td>20</td><td>20</td></tr>
+    <tr><td>\(x^3-9x+3\)</td><td>\([0,1]\)</td><td>\(10^{-12}\)</td><td>40</td><td>40</td></tr>
+    <tr><td>Wien</td><td>\([4,6]\)</td><td>\(10^{-12}\)</td><td>41</td><td>41</td></tr>
+    <tr><td>\(e^x-2\)</td><td>\([0,2]\)</td><td>\(10^{-12}\)</td><td>41</td><td>41</td></tr>
+    <tr><td>\(e^x-2\)</td><td>\([-1000,2]\)</td><td>\(10^{-12}\)</td><td>50</td><td>50</td></tr>
+  </table>
+  </div>
+
+  <p>Duas leituras. Cada iteração ganha \(\log_{10}2 = 0{,}301\) casa decimal, ou seja, são
+  3,32 iterações por dígito, sempre, do primeiro passo ao último. A bisseção converge do mesmo
+  jeito perto e longe da raiz, porque não usa nenhuma informação além do sinal: é
+  <strong>convergência linear</strong>, com taxa exatamente \(1/2\).</p>
+
+  <p>A segunda leitura está nas duas últimas linhas. O intervalo passou de 2 para 1002, 501
+  vezes maior, e o custo subiu em 9 iterações, que é \(\log_2 501 = 9{,}0\). <strong>O
+  intervalo inicial quase não importa</strong>, e isso é uma licença para ser generoso no
+  palpite: não vale a pena gastar tempo estreitando o bracket à mão.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Critérios de parada, e onde o laço trava</h2>
+
+  <p>Três candidatos, e nenhum serve sozinho:</p>
+
+  <ol>
+    <li>Largura do intervalo: \(|b_k - a_k| < \varepsilon\);</li>
+    <li>Largura relativa: \(|b_k-a_k|/|x_k| < \varepsilon\), preferível quando a raiz tem ordem
+    de grandeza muito diferente de 1;</li>
+    <li>Resíduo: \(|f(x_k)| < \delta\).</li>
+  </ol>
+
+  <div class="bloco alerta">
+    <span class="rotulo">O resíduo engana nas duas direções</span>
+    <p>Uma função achatada perto da raiz produz resíduo minúsculo longe dela. Em
+    \(f(x) = (x-1)^7\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(x\)</th><th>\(|x - \xi|\)</th><th>\(|f(x)|\)</th></tr>
+      <tr><td>1,10</td><td>0,1</td><td>\(1{,}0\times10^{-7}\)</td></tr>
+      <tr><td>1,05</td><td>0,05</td><td>\(7{,}8\times10^{-10}\)</td></tr>
+      <tr><td>1,01</td><td>0,01</td><td>\(1{,}0\times10^{-14}\)</td></tr>
+    </table>
+    </div>
+    <p>Um critério com \(\delta = 10^{-6}\) pararia em \(x = 1{,}1\), com <em>um</em> dígito
+    correto, convencido de ter dezesseis.</p>
+    <p>Uma função inclinada faz o oposto. Em \(f(x) = 10^{8}(x-1)\), em \(x = 1+10^{-13}\) a
+    raiz já está certa até o décimo terceiro dígito e o resíduo ainda vale \(10^{-5}\): um
+    critério com \(\delta = 10^{-9}\) recusaria parar, atrás de uma precisão que a máquina não
+    tem.</p>
+  </div>
+
+  <p>A recomendação prática é combinar: parar quando \(|b_k-a_k| < \varepsilon\) <em>ou</em>
+  \(|f(x_k)| < \delta\), sempre com um teto de iterações para que um erro de programação não
+  gere laço infinito.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O critério que nunca trava</span>
+    <p>Pedir \(\varepsilon = 10^{-20}\) em <code>float64</code> é pedir o impossível: perto de
+    \(x \approx 1\) não existem números separados por menos que \(2{,}2\times10^{-16}\), e o
+    laço rodaria para sempre.</p>
+    <p>Existe um critério que não depende de tolerância nenhuma, e que por isso nunca trava:
+    parar quando o ponto médio deixa de se mover, ou seja, quando
+    <code>x == a or x == b</code>. Ali a grade acabou, e insistir é impossível.</p>
+    <p>Rodando assim em \([0,1]\) com \(\varepsilon = 10^{-30}\), o programa dá <strong>54
+    cortes</strong>, detectados no passo 55, com largura final \(5{,}55\times10^{-17}\), que é
+    exatamente o espaçamento da grade naquele ponto. E
+    \(\log_2(1/5{,}55\times10^{-17}) = 54{,}0\): o número de cortes é exatamente o logaritmo na
+    base dois da largura inicial dividida pelo espaçamento local.</p>
+    <p>Esse número não é escolhido, é imposto pela máquina. Para qualquer intervalo de largura
+    1 perto da origem, a bisseção tem 54 passos úteis e nem um a mais.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. O que a bisseção não vê, e por que isso a protege</h2>
+
+  <p>O método nunca olha para o <em>valor</em> de \(f\), só para o sinal. Se \(f(x_k)\) vale
+  \(10^{-9}\), estamos quase certamente muito perto da raiz, e a bisseção trata esse caso
+  exatamente como trataria \(f(x_k) = 10^{6}\). É informação jogada fora, e é por isso que ela
+  é lenta.</p>
+
+  <p>A mesma cegueira é a origem da sua robustez, e há uma maneira exata de dizer isso.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Invariância por reescrita</span>
+    <p>Se \(g(x) = \varphi(x)\,f(x)\) com \(\varphi\) de sinal constante, então a bisseção
+    aplicada a \(f\) e a \(g\) produz <strong>exatamente a mesma sequência de pontos
+    médios</strong>, porque só o sinal entra na decisão.</p>
+  </div>
+
+  <p>Isso não é abstrato. A equação de Wien aparece na literatura em duas formas:</p>
+
+  <p>\[ g_1(x) = (x-5)e^{x} + 5, \qquad g_2(x) = 5(1-e^{-x}) - x, \]</p>
+
+  <p>e elas são a mesma equação, porque \(g_1 = -e^{x}\,g_2\). Como \(-e^x\) nunca muda de
+  sinal, a bisseção não distingue uma da outra: rodando as duas em \([4,6]\), os pontos médios
+  são idênticos, passo a passo.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">E Newton distingue</span>
+    <p>As derivadas na raiz são bem diferentes:
+    \(g_1'(\xi) = 138{,}3\) e \(g_2'(\xi) = -0{,}965\). Newton divide por \(f'\), de modo que
+    a reescrita muda o tamanho de cada passo, e muda a contagem: partindo de \(x_0 = 5\),
+    Newton leva 5 passos em \(g_1\) e 4 em \(g_2\).</p>
+    <p>A diferença é pequena aqui, e nem sempre é. Reescrever a equação é uma decisão que afeta
+    todos os métodos da unidade <em>menos</em> a bisseção, e saber disso ajuda a escolher onde
+    gastar atenção: se o método é a bisseção, não adianta procurar a forma mais bonita da
+    equação.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. Wien, e a temperatura do Sol</h2>
+
+  <p>A lei de Planck para a radiância espectral de um corpo negro é</p>
+
+  <p>\[ B_\lambda(T) = \frac{2hc^2}{\lambda^5}\,
+     \frac{1}{e^{hc/\lambda k_B T} - 1}. \]</p>
+
+  <p>Derivando em \(\lambda\), igualando a zero e escrevendo \(x = hc/(\lambda k_B T)\), sobra
+  a equação transcendental \((x-5)e^{x} + 5 = 0\). Além da raiz trivial \(x = 0\), que
+  corresponde a \(\lambda\to\infty\) e não interessa, há uma perto de 5.</p>
+
+  <p>Isolando: \(g(4) = -49{,}60\) e \(g(6) = 408{,}43\), sinais opostos. A bisseção em
+  \([4,6]\) com tolerância \(10^{-12}\) gasta as 41 iterações previstas e dá</p>
+
+  <p>\[ x = 4{,}965114232, \qquad
+     b = \frac{hc}{x\,k_B} = 2{,}897771955\times10^{-3}\ \text{m}\cdot\text{K}, \]</p>
+
+  <p>que concorda com o valor do CODATA em \(6\times10^{-11}\) relativos. O pico da radiação
+  solar fica em 502 nm, de modo que</p>
+
+  <p>\[ T_\odot = \frac{b}{\lambda_{\max}} = 5772\ \text{K}. \]</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">O que acabou de acontecer</span>
+    <p>Partindo da lei de Planck, de um comprimento de onda medido e de um método de 1817,
+    mediu-se a temperatura da fotosfera solar sem sair do laboratório de informática. O valor
+    aceito é 5772 K.</p>
+    <p>Vale notar de onde vem cada ingrediente. A física entrou na lei de Planck e na
+    derivação; o método numérico entrou só na última etapa, para resolver uma equação de uma
+    variável. É quase sempre assim: o método numérico é uma peça pequena de um argumento
+    físico, e o trabalho de quem resolve está em montar o argumento, não em rodar o
+    método.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">E quando usar a bisseção de verdade</span>
+    <p>Quase nunca, sozinha. O SciPy traz a <code>brentq</code>, que combina a segurança da
+    bisseção com a velocidade da secante, e resolve o mesmo problema em bem menos avaliações:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>função</th><th><code>bisect</code></th><th><code>brentq</code></th><th>razão</th></tr>
+      <tr><td>\(x^3-9x+3\)</td><td>42</td><td>8</td><td>5,2</td></tr>
+      <tr><td>Wien</td><td>43</td><td>11</td><td>3,9</td></tr>
+      <tr><td>\(\cos x - x\)</td><td>43</td><td>8</td><td>5,4</td></tr>
+      <tr><td>\(x^{10}-1\)</td><td>42</td><td>11</td><td>3,8</td></tr>
+    </table>
+    </div>
+    <p>Em trabalho de pesquisa, use <code>brentq</code>. Implementamos a bisseção à mão não
+    porque seja a melhor ferramenta, mas porque entender o que acontece dentro da caixa é o que
+    permite diagnosticar quando a caixa falha, e a <code>brentq</code> exige o mesmo bracket
+    com troca de sinal, pelas mesmas razões desta aula.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/bissecao.py">
+      <span class="numero">Programa</span>
+      <h3>bissecao.py</h3>
+      <p>Testa os dois contraexemplos de Bolzano, isola raízes e mostra as duas falhas da
+      varredura, confere a contagem de iterações contra a previsão, mede onde o laço trava por
+      falta de grade, e resolve Wien comparando bisseção com <code>brentq</code>.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>A contagem de iterações bate exatamente com \(\lceil\log_2((b-a)/\varepsilon)\rceil\)
+    nos cinco casos da seção 5.</li>
+    <li>A varredura perde as duas raízes de \((x-1)(x-1{,}013)\) enquanto o passo é maior que
+    0,013, e as encontra a partir de 200 subintervalos.</li>
+    <li>A raiz de 0,5 cai num nó com dez subintervalos e some do teste de sinal; com onze, ela
+    aparece.</li>
+    <li>O laço trava em 54 cortes a partir de \([0,1]\), que é
+    \(\log_2(1/5{,}55\times10^{-17})\).</li>
+    <li>A raiz de Wien coincide com a da <code>brentq</code> em \(4\times10^{-13}\), e a
+    constante obtida bate com o CODATA em \(6\times10^{-11}\) relativos.</li>
+    <li>Todas as comparações com a <code>brentq</code> passam por um <code>assert</code> de que
+    as duas acharam a mesma raiz, antes de comparar o custo.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Uma medida que desmentiu a regra, e por um motivo bobo</span>
+    <p>Na tabela de custo acima a <code>brentq</code> ganha em tudo. Mas num intervalo
+    específico, \([0{,}5;\,1{,}3]\) para \(x^{10}-1\), a bisseção venceu de lavada: 5 avaliações
+    contra 12.</p>
+    <p>O motivo não é matemático. Os pontos médios sucessivos são 0,9, depois 1,1, depois
+    <strong>1,0 exatamente</strong>, que é a raiz: o resíduo dá zero e o laço encerra. É sorte
+    do intervalo escolhido, e trocando para \([0{,}3;\,1{,}21]\) a bisseção volta a gastar 42
+    avaliações.</p>
+    <p>O episódio serve de aviso contra tirar conclusão de uma medida só. Uma comparação de
+    desempenho feita num caso de teste é uma anedota, e não um resultado.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 4.1 · Bisseção à mão, e o erro que se promete</span>
+    <p>Encontre a raiz de \(f(x) = x^3 - 9x + 3\) em \([0,1]\) com quatro iterações à mão,
+    diga o erro máximo cometido, e confira contra o valor exato.</p>
+
+    <p><strong>Bolzano primeiro.</strong> \(f(0) = 3 > 0\) e \(f(1) = 1-9+3 = -5 < 0\), de modo
+    que \(f(0)f(1) = -15 < 0\). A função é polinomial, portanto contínua, e existe raiz em
+    \((0,1)\).</p>
+
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(k\)</th><th>\(a_k\)</th><th>\(b_k\)</th><th>\(x_k\)</th>
+          <th>\(f(x_k)\)</th><th>decisão</th></tr>
+      <tr><td>1</td><td>0,00000</td><td>1,00000</td><td>0,50000</td><td>\(-1{,}37500\)</td>
+          <td>raiz em \([0;\,0{,}5]\)</td></tr>
+      <tr><td>2</td><td>0,00000</td><td>0,50000</td><td>0,25000</td><td>\(+0{,}76562\)</td>
+          <td>raiz em \([0{,}25;\,0{,}5]\)</td></tr>
+      <tr><td>3</td><td>0,25000</td><td>0,50000</td><td>0,37500</td><td>\(-0{,}32227\)</td>
+          <td>raiz em \([0{,}25;\,0{,}375]\)</td></tr>
+      <tr><td>4</td><td>0,25000</td><td>0,37500</td><td>0,31250</td><td>\(+0{,}21802\)</td>
+          <td>raiz em \([0{,}3125;\,0{,}375]\)</td></tr>
+    </table>
+    </div>
+
+    <p><strong>A resposta, com a incerteza.</strong> Depois de quatro iterações a raiz está em
+    \([0{,}3125;\,0{,}375]\), de largura 0,0625. O ponto médio é \(x_4 = 0{,}34375\) e o erro
+    máximo é 0,03125. Escreve-se então</p>
+    <p>\[ \xi = 0{,}344 \pm 0{,}031, \]</p>
+    <p>e essa é a forma certa de apresentar: com a incerteza, porque ela é conhecida.</p>
+
+    <p><strong>Conferindo.</strong> O valor exato é \(\xi = 0{,}33760896\), que está dentro do
+    intervalo prometido, a 0,0061 do ponto médio. O erro real é cinco vezes menor que a cota, e
+    é assim que tem de ser: a cota vale para o pior caso, em que a raiz estaria colada numa das
+    bordas.</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">Por que quatro iterações não dão quatro casas</span>
+      <p>Um erro comum é esperar que quatro iterações deem quatro dígitos. Elas dão
+      \(4 \times 0{,}301 = 1{,}2\) dígito, e o resultado tem mesmo um dígito correto e um pouco.
+      Para quatro casas decimais seriam \(4/0{,}301 = 13{,}3\), ou seja, 14 iterações.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 4.2 · Uma bisseção que converge para o lugar errado</span>
+    <p>Um aluno quer o ponto em que a função \(f(x) = \dfrac{1}{x-2} - 1\) vale zero, e sabe que
+    a resposta é \(x = 3\). Ele roda a bisseção em \([0,4]\) e obtém \(x = 2{,}0000000\), com
+    resíduo enorme. O que aconteceu, e como evitar?</p>
+
+    <p><strong>O que o teste de sinal viu.</strong> \(f(0) = -1{,}5\) e \(f(4) = -0{,}5\), os
+    dois negativos: a bisseção nem deveria ter começado, e uma implementação com a verificação
+    da seção 2 teria recusado o intervalo. Se o aluno conseguiu rodar, é porque a implementação
+    dele não checa.</p>
+
+    <p>Trocando para \([2{,}5;\,4]\): \(f(2{,}5) = +1\) e \(f(4) = -0{,}5\), produto negativo, e
+    a bisseção converge para 3 sem incidente.</p>
+
+    <p><strong>Mas o caso perigoso é outro.</strong> Suponha o intervalo \([1,\,2{,}5]\). Ali
+    \(f(1) = -2\) e \(f(2{,}5) = +1\), produto negativo: o teste de Bolzano <strong>passa</strong>.
+    E não há raiz nenhuma em \([1;\,2{,}5]\): o que há é o polo em \(x = 2\), onde a função
+    salta de \(-\infty\) a \(+\infty\).</p>
+
+    <p>A bisseção converge, educadamente, para \(x = 2\), e o resíduo cresce sem limite
+    conforme ela se aproxima:</p>
+
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(k\)</th><th>\(x_k\)</th><th>\(f(x_k)\)</th><th>\(b_k-a_k\)</th></tr>
+      <tr><td>1</td><td>1,750000</td><td>\(-5{,}0\)</td><td>\(1{,}5\)</td></tr>
+      <tr><td>10</td><td>2,000488</td><td>\(+2{,}0\times10^{3}\)</td><td>\(2{,}9\times10^{-3}\)</td></tr>
+      <tr><td>30</td><td>2,000000</td><td>\(+2{,}1\times10^{9}\)</td><td>\(2{,}8\times10^{-9}\)</td></tr>
+      <tr><td>50</td><td>2,000000</td><td>\(+2{,}3\times10^{15}\)</td><td>\(2{,}7\times10^{-15}\)</td></tr>
+    </table>
+    </div>
+
+    <p>O intervalo encolhe como prometido, e o algoritmo cumpre tudo o que anunciou: a cada
+    passo o bracket cai pela metade e o sinal continua trocando dentro dele. O método não tem
+    como perceber o engano, porque só olha sinais, e o sinal se comporta ao redor do polo
+    exatamente como se comportaria ao redor de uma raiz.</p>
+
+    <p>Rodando no intervalo certo, \([2{,}5;\,4]\), ele devolve \(x = 3{,}000000000000001\)
+    com resíduo \(-8{,}9\times10^{-16}\). A diferença entre os dois casos está inteira na
+    coluna do resíduo.</p>
+
+    <div class="bloco def">
+      <span class="rotulo">As três defesas</span>
+      <ol>
+        <li><strong>Olhar o resíduo no fim.</strong> Numa raiz legítima \(|f(x_k)|\) vai a zero
+        junto com a largura do intervalo. Num polo ele <em>cresce</em>. É o teste mais barato e
+        pega todos os casos deste tipo.</li>
+        <li><strong>Esboçar antes.</strong> Vinte pontos num gráfico teriam mostrado o salto.</li>
+        <li><strong>Procurar as descontinuidades a mão,</strong> que para funções racionais
+        significa achar os zeros do denominador, e excluí-los dos intervalos de busca.</li>
+      </ol>
+      <p>A primeira defesa é a que vale incorporar ao código de uma vez por todas: um método que
+      devolve a raiz sem devolver o resíduo está escondendo de você a única informação que
+      detecta esse erro.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>4.1</b> Implemente a bisseção com os três critérios de parada e um teto de
+      iterações, e faça a função devolver também qual critério parou o laço. Teste em
+      \(x^3-9x+3\) em \([0,1]\) pedindo tolerâncias de \(10^{-3}\) a \(10^{-20}\), e mostre em
+      que ponto o critério de parada deixa de ser a tolerância.</li>
+
+      <li><b>4.2</b> Implemente o método da falsa posição, que é a bisseção com o ponto médio
+      trocado pela interseção da secante com o eixo. Teste em \(x^3-2x-5\) e em \(x^{10}-1\) no
+      intervalo \([0;\,1{,}3]\). No segundo caso ele fica muito mais lento que a bisseção:
+      descubra por quê desenhando os intervalos sucessivos, e proponha a correção conhecida como
+      método de Illinois.</li>
+
+      <li><b>4.3</b> Meça a ordem de convergência da falsa posição no exemplo em que ela vai bem
+      e naquele em que vai mal, e explique o número que encontrar no segundo caso. Compare com a
+      taxa \(1/2\) da bisseção, que a aula 5 vai medir.</li>
+
+      <li><b>4.4</b> A equação \(\tg x = x\) tem infinitas raízes, uma entre cada par de
+      assíntotas. Escreva um programa que isole e ache as dez primeiras raízes positivas, e
+      confira que elas se aproximam de \((n+\tfrac12)\pi\). Diga como você garantiu que nenhum
+      intervalo de busca contém uma assíntota, e o que aconteceria se contivesse.</li>
+
+      <li><b>4.5</b> Refaça a conta de Wien usando o pico de emissão de três estrelas de tipos
+      diferentes, e estime a temperatura de cada uma. Em seguida inverta: dada a temperatura de
+      5772 K, em que comprimento de onda está o pico, e que cor é essa?</li>
+
+      <li><b>4.6</b> Deduza a versão da lei de Wien em <em>frequência</em>, derivando
+      \(B_\nu(T)\) em vez de \(B_\lambda(T)\). A equação transcendental muda, e a raiz também.
+      Mostre que \(\nu_{\max} \ne c/\lambda_{\max}\), e explique por que não há contradição.</li>
+
+      <li><b>4.7</b> Construa um caso em que a bisseção converge para um polo, como no exercício
+      resolvido 4.2, e mostre o resíduo crescendo iteração a iteração num gráfico. Depois
+      acrescente ao seu código da questão 4.1 a defesa do resíduo, e verifique que ela detecta
+      o caso.</li>
+
+      <li><b>4.8</b> Em meia página: a bisseção é o único método desta unidade que oferece um
+      limite de erro válido antes de rodar. Explique de onde vem essa garantia, por que os
+      métodos mais rápidos não podem oferecê-la, e em que situação de laboratório você
+      escolheria a garantia em vez da velocidade.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula03.html"><small>Aula anterior</small>← 3. Erros</a>
+    <a class="prox" href="aula05.html"><small>Próxima aula</small>5. Newton →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221036"></script>
+</body>
+</html>
