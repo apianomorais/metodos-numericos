@@ -1845,6 +1845,162 @@
     registrarRedesenho(desenhar);
   };
 
+  /* ------------------------------------------------------------------
+     Sturm: contar raizes num intervalo sem achar nenhuma. A sequencia e
+     construida com divisao polinomial em JS, e a contagem aparece ao
+     lado das raizes de verdade, para que o leitor confira.
+     ------------------------------------------------------------------ */
+  REGISTRO.sturm = function (raiz) {
+    var corpo = moldura(raiz, 'Contar raízes sem achar nenhuma');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var qual = 0, ia = -25, ib = 25;
+
+    var POLS = [
+      { rot: 'x⁵−3x⁴−5x³+15x²+4x−12', c: [1, -3, -5, 15, 4, -12],
+        r: [-2, -1, 1, 2, 3], lo: -4, hi: 4 },
+      { rot: 'x⁴−1', c: [1, 0, 0, 0, -1], r: [-1, 1], lo: -2.2, hi: 2.2 },
+      { rot: 'x³−x−1', c: [1, 0, -1, -1], r: [1.3247179572], lo: -2.2, hi: 2.2 },
+      { rot: '(x²+1)(x−2)', c: [1, -2, 1, -2], r: [2], lo: -2.2, hi: 3.2 }
+    ];
+
+    /* divisao polinomial: devolve o resto de a por b */
+    function resto(a, b) {
+      var r = a.slice(), i, j, f;
+      var n = r.length - b.length;
+      for (i = 0; i <= n; i++) {
+        f = r[i] / b[0];
+        for (j = 0; j < b.length; j++) r[i + j] -= f * b[j];
+      }
+      r = r.slice(a.length - b.length + 1);
+      while (r.length > 1 && Math.abs(r[0]) < 1e-12) r = r.slice(1);
+      return r;
+    }
+    function deriva(c) {
+      var n = c.length - 1, d = [], i;
+      for (i = 0; i < n; i++) d.push(c[i] * (n - i));
+      return d.length ? d : [0];
+    }
+    function aval(c, x) {
+      var v = 0, i;
+      for (i = 0; i < c.length; i++) v = v * x + c[i];
+      return v;
+    }
+    function sequencia(c) {
+      var seq = [c.slice(), deriva(c)], k = 0;
+      while (seq[seq.length - 1].length > 1 && k++ < 20) {
+        var r = resto(seq[seq.length - 2], seq[seq.length - 1]);
+        if (r.length === 1 && Math.abs(r[0]) < 1e-12) break;
+        seq.push(r.map(function (v) { return -v; }));
+      }
+      return seq;
+    }
+    function trocas(vals) {
+      var s = vals.filter(function (v) { return Math.abs(v) > 1e-12; })
+                  .map(function (v) { return v > 0 ? 1 : -1; });
+      var t = 0, i;
+      for (i = 0; i < s.length - 1; i++) if (s[i] !== s[i + 1]) t++;
+      return t;
+    }
+
+    opcoes(corpo, POLS.map(function (o, i) { return { rot: o.rot, v: i }; }), 0,
+      function (v) { qual = v; desenhar(); });
+
+    deslizante(corpo, 'a =', -40, 40, 1, -25,
+      function (v) { ia = v; desenhar(); },
+      function (v) { return N.fmt(v / 10, 1); });
+    deslizante(corpo, 'b =', -40, 40, 1, 25,
+      function (v) { ib = v; desenhar(); },
+      function (v) { return N.fmt(v / 10, 1); });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'V(a)', k: 'a' }, { rot: 'V(b)', k: 'b' },
+      { rot: 'Sturm: V(a) − V(b)', k: 'n' }, { rot: 'raízes de verdade', k: 'e' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var o = POLS[qual];
+      var a = Math.min(ia, ib) / 10, b = Math.max(ia, ib) / 10;
+      var seq = sequencia(o.c);
+      var p = G.preparar(cv, Math.min(280, Math.max(200, cv.clientWidth * 0.28)));
+
+      var lo = Infinity, hi = -Infinity, i;
+      for (i = 0; i <= 200; i++) {
+        var v = aval(o.c, o.lo + (o.hi - o.lo) * i / 200);
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      }
+      lo = Math.max(lo, -40); hi = Math.min(hi, 40);
+      var mg = 0.12 * (hi - lo);
+      var g = G.eixos(cv, {
+        altura: p.A, limpar: false,
+        xmin: o.lo, xmax: o.hi, ymin: lo - mg, ymax: hi + mg,
+        rotX: 'x', rotY: 'p(x)', divY: 4,
+        margem: { e: 54, d: 16, c: 12, b: 34 },
+        formataY: function (v) { return N.fmt(v, 0); }
+      });
+      var ct = g.ct; ct.save();
+      ct.beginPath();
+      ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      ct.clip();
+
+      /* a faixa do intervalo */
+      ct.fillStyle = 'rgba(44,95,141,0.10)';
+      ct.fillRect(g.X(a), g.y0, g.X(b) - g.X(a), g.y1 - g.y0);
+      [[a, 'a'], [b, 'b']].forEach(function (t) {
+        ct.strokeStyle = G.COR.azul; ct.lineWidth = 1.4;
+        ct.beginPath(); ct.moveTo(g.X(t[0]), g.y0); ct.lineTo(g.X(t[0]), g.y1);
+        ct.stroke();
+        rotulo(ct, t[1], g.X(t[0]), g.y0 + 11, G.COR.azul, 'center');
+      });
+
+      ct.strokeStyle = G.COR.clara; ct.lineWidth = 1;
+      ct.beginPath(); ct.moveTo(g.x0, g.Y(0)); ct.lineTo(g.x1, g.Y(0)); ct.stroke();
+
+      ct.beginPath();
+      for (i = 0; i <= 400; i++) {
+        var xx = o.lo + (o.hi - o.lo) * i / 400;
+        if (i === 0) ct.moveTo(g.X(xx), g.Y(aval(o.c, xx)));
+        else ct.lineTo(g.X(xx), g.Y(aval(o.c, xx)));
+      }
+      ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2.2; ct.stroke();
+
+      o.r.forEach(function (rv) {
+        ct.fillStyle = G.COR.vinho;
+        ct.beginPath(); ct.arc(g.X(rv), g.Y(0), 4, 0, 2 * Math.PI); ct.fill();
+      });
+      ct.restore();
+
+      var Va = trocas(seq.map(function (q) { return aval(q, a); }));
+      var Vb = trocas(seq.map(function (q) { return aval(q, b); }));
+      var exato = o.r.filter(function (rv) { return rv > a && rv <= b; }).length;
+      mostrar({
+        a: String(Va), b: String(Vb), n: String(Va - Vb),
+        e: String(exato) + (Va - Vb === exato ? ' ✓' : ' ✗')
+      });
+
+      saida.innerHTML =
+        'A sequência de Sturm tem ' + seq.length + ' polinômios, de grau '
+        + (o.c.length - 1) + ' até ' + (seq[seq.length - 1].length - 1)
+        + '. Avaliada em \\(a\\) ela troca de sinal ' + Va + ' vez'
+        + (Va === 1 ? '' : 'es') + ', e em \\(b\\), ' + Vb + '. A diferença, '
+        + (Va - Vb) + ', é o número <strong>exato</strong> de raízes reais '
+        + 'distintas em \\((a, b]\\), e a última ficha confere contra as '
+        + 'raízes conhecidas. Repare que a conta não achou raiz nenhuma: ela '
+        + 'só contou. '
+        + (o.r.length < o.c.length - 1
+           ? 'Neste polinômio parte das raízes é complexa, e Sturm as ignora '
+             + 'sem precisar saber disso.'
+           : 'Arraste a e b e veja a contagem acompanhar.');
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {

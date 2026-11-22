@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 7: Localização de raízes reais de polinômios | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221057">
+<script src="assets/js/comum.js?v=202611221057"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Erros numéricos e propagação">3</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula04.html" class="num" title="Aula 4: O método da bisseção">4</a>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <a href="aula06.html" class="num" title="Aula 6: Métodos iterativos de ponto fixo">6</a>
+      <span class="grupo">Polinômios</span>
+      <a href="aula07.html" class="num ativo" title="Aula 7: Localização de raízes reais de polinômios">7</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Por que polinômios são diferentes</a></li>
+    <li><a href="#s2">2. Horner, e o quociente de brinde</a></li>
+    <li><a href="#s3">3. Cotas: onde certamente não há raiz</a></li>
+    <li><a href="#s4">4. A regra de sinais de Descartes</a></li>
+    <li><a href="#s5">5. Budan-Fourier</a></li>
+    <li><a href="#s6">6. Sturm, e a contagem exata</a></li>
+    <li><a href="#s7">7. Isolar, automaticamente</a></li>
+    <li><a href="#s8">8. Os pontos de Lagrange</a></li>
+    <li><a href="#s9">9. No Spyder</a></li>
+    <li><a href="#s10">10. Exercícios resolvidos</a></li>
+    <li><a href="#s11">11. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 7 · Raízes de polinômios</p>
+  <h1>Localização de raízes reais de polinômios</h1>
+  <p class="subtitulo">Todas as aulas anteriores supunham resolvida uma etapa que ninguém resolveu: escolher o intervalo inicial, olhando o gráfico. Para polinômios essa etapa pode ser resolvida com rigor, por teoremas que dizem quantas raízes há num intervalo sem calcular nenhuma delas.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Avaliar um polinômio por Horner, e reconhecer o quociente que vem junto;</li>
+      <li>Delimitar as raízes por cotas, e saber que elas são generosas de propósito;</li>
+      <li>Contar raízes positivas e negativas pela regra de Descartes;</li>
+      <li>Usar Budan-Fourier para contar num intervalo qualquer;</li>
+      <li>Construir a sequência de Sturm e obter a contagem exata;</li>
+      <li>Isolar todas as raízes reais automaticamente, sem olhar gráfico nenhum.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Por que polinômios são diferentes</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Teorema fundamental da álgebra</span>
+    <p>Todo polinômio de grau \(n \ge 1\) com coeficientes complexos tem exatamente \(n\)
+    raízes em \(\mathbb{C}\), contadas com multiplicidade.</p>
+    <p>Para coeficientes reais vale ainda que as raízes complexas vêm em pares conjugados
+    \(a \pm bi\). Logo, se \(n\) é ímpar, existe pelo menos uma raiz real.</p>
+  </div>
+
+  <p>Isso muda o jogo. Para uma função qualquer não se sabe quantas raízes procurar, nem
+  quando parar de procurar. Para um polinômio a contabilidade é fechada: um polinômio de grau
+  5 tem cinco raízes, e se localizarmos três reais, as duas restantes são obrigatoriamente um
+  par complexo conjugado. Não há o que discutir.</p>
+
+  <p>Essa contabilidade é o que permite construir uma estratégia sistemática em vez de tatear.
+  E vale o esforço, porque polinômios aparecem em física com frequência desconfortável:
+  polinômios característicos de matrizes, que são os modos normais de oscilação da aula 13 de
+  Mecânica Clássica III e os autovalores de hamiltonianos; equações seculares; pontos de
+  equilíbrio de potenciais; e a quíntica dos pontos de Lagrange, que fecha esta aula.</p>
+
+  <p>O exemplo que vai acompanhar a aula inteira é</p>
+
+  <p>\[ p(x) = x^5 - 3x^4 - 5x^3 + 15x^2 + 4x - 12, \]</p>
+
+  <p>escolhido porque suas raízes são \(-2, -1, 1, 2, 3\), inteiras e conhecidas. Toda contagem
+  que aparecer aqui tem gabarito.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Horner, e o quociente de brinde</h2>
+
+  <p>Antes de localizar raízes é preciso avaliar o polinômio, e muitas vezes. A forma ingênua,</p>
+
+  <p>\[ p(x) = a_n x^n + a_{n-1}x^{n-1} + \cdots + a_0, \]</p>
+
+  <p>custa \(n\) potências e \(n\) multiplicações. Reescrevendo por fatoração sucessiva:</p>
+
+  <p>\[ p(x) = \Bigl(\cdots\bigl((a_n x + a_{n-1})x + a_{n-2}\bigr)x + \cdots\Bigr)x + a_0. \]</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Esquema de Horner, ou Briot-Ruffini</span>
+    <p>\[ b_n = a_n, \qquad b_k = a_k + b_{k+1}x_0 \quad (k = n-1,\ldots,0), \]</p>
+    <p>com \(p(x_0) = b_0\). São \(n\) multiplicações e \(n\) somas.</p>
+    <p>E, de brinde, os coeficientes \(b_n, \ldots, b_1\) são <strong>exatamente os do
+    quociente</strong> da divisão de \(p(x)\) por \((x-x_0)\).</p>
+  </div>
+
+  <p>O brinde não é curiosidade. Com \(x_0 = 2\), que é raiz, o programa obtém</p>
+
+  <p>\[ p(x) = (x-2)(x^4 - x^3 - 7x^2 + x + 6), \]</p>
+
+  <p>e conferir é imediato: multiplicando de volta e somando o resto, volta \(p\). Esse
+  quociente é a <strong>deflação</strong>, e a aula 8 inteira se apoia nele: achada uma raiz,
+  continua-se procurando no quociente, que tem um grau a menos.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Cotas: onde certamente não há raiz</h2>
+
+  <p>O primeiro passo é reduzir a busca a uma região finita. Várias cotas clássicas respondem
+  à pergunta "fora de que intervalo certamente não há raízes?".</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Três cotas</span>
+    <p>Seja \(p(x) = a_nx^n + \cdots + a_0\) com \(a_n \ne 0\). Toda raiz \(\xi\), real ou
+    complexa, satisfaz:</p>
+    <p><strong>Cauchy:</strong>
+    \(\displaystyle |\xi| < 1 + \frac{\max_{0\le i&lt;n}|a_i|}{|a_n|}\)</p>
+    <p><strong>Lagrange:</strong>
+    \(\displaystyle |\xi| \le \max\left\{1, \sum_{i=0}^{n-1}\left|\frac{a_i}{a_n}\right|\right\}\)</p>
+    <p><strong>Laguerre-Thibault</strong> (só para raízes positivas, com \(a_n>0\)): sendo
+    \(k\) o maior <em>grau</em> com coeficiente negativo e \(B\) o maior módulo entre os
+    coeficientes negativos,
+    \(\displaystyle \xi < 1 + \sqrt[\,n-k\,]{B/a_n}\).</p>
+  </div>
+
+  <div class="bloco ex">
+    <span class="rotulo">No nosso polinômio</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>cota</th><th>valor</th><th>razão para a maior raiz, que é 3</th></tr>
+      <tr><td>Cauchy</td><td>16,0</td><td>5,3</td></tr>
+      <tr><td>Lagrange</td><td>39,0</td><td>13,0</td></tr>
+      <tr><td>Laguerre-Thibault</td><td>13,0</td><td>4,3</td></tr>
+    </table>
+    </div>
+    <p>As três contêm todas as raízes, como têm de conter, e as três são generosas: a melhor
+    delas ainda é quatro vezes maior que a resposta.</p>
+  </div>
+
+  <p>O papel de uma cota não é dar a resposta, e sim garantir que a varredura não deixe raiz
+  de fora. Na prática, calcule duas ou três e fique com a menor. Para as raízes negativas,
+  aplique a mesma cota a \(p(-x)\): a menos de sinal, os dois problemas são o mesmo.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">Um detalhe de implementação que derruba muita gente</span>
+    <p>Na fórmula de Laguerre-Thibault, o \(k\) é um <strong>grau</strong>, e não um índice da
+    lista de coeficientes. Com os coeficientes guardados do maior grau para o menor, o
+    coeficiente da posição \(i\) tem grau \(n-i\), e confundir os dois dá um expoente errado na
+    raiz.</p>
+    <p>Na primeira versão do programa desta aula, essa confusão fez a cota devolver infinito.
+    O <code>assert</code> que verifica se a cota contém a maior raiz não pegou, porque
+    infinito contém qualquer coisa: foi a comparação com as outras duas cotas que denunciou.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. A regra de sinais de Descartes</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Descartes, 1637</span>
+    <p>Seja \(V(p)\) o número de variações de sinal na sequência dos coeficientes não nulos de
+    \(p\). Então o número \(n_+\) de raízes reais positivas satisfaz</p>
+    <p>\[ n_+ \le V(p), \qquad V(p) - n_+ \ \text{é par}. \]</p>
+    <p>Para as negativas, aplica-se a mesma contagem a \(p(-x)\).</p>
+  </div>
+
+  <p>A paridade vale metade do teorema. Sabendo que \(n_+ \le 3\) e que \(3 - n_+\) é par, só
+  restam 3 e 1: o valor 2 está excluído, e isso é informação que a desigualdade sozinha não
+  daria.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">No nosso polinômio</span>
+    <p>Coeficientes de \(p(x)\): \(+1, -3, -5, +15, +4, -12\). As variações de sinal são três,
+    nas transições \(+1 \to -3\), \(-5 \to +15\) e \(+4 \to -12\). Logo \(n_+\) é 3 ou 1.</p>
+    <p>Coeficientes de \(p(-x)\): \(-1, -3, +5, +15, -4, -12\). Duas variações, logo \(n_-\) é
+    2 ou 0.</p>
+    <p>De verdade são 3 positivas e 2 negativas: Descartes acertou o teto nos dois casos. Nem
+    sempre é assim, e a seção 8 traz um exemplo em que a cota erra por quatro.</p>
+  </div>
+
+  <p>O caso em que Descartes é exato sem ambiguidade é \(V = 0\) ou \(V = 1\). Com \(V = 0\),
+  não há raiz positiva nenhuma, ponto final; com \(V = 1\), há exatamente uma. Esse caso é
+  mais comum do que parece, e resolve metade do problema da quíntica da seção 8.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Budan-Fourier</h2>
+
+  <p>Descartes conta no intervalo \((0,\infty)\). O passo seguinte generaliza para um intervalo
+  qualquer, trocando a sequência dos coeficientes pela sequência das derivadas.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Teorema de Budan-Fourier</span>
+    <p>Seja \(V(c)\) o número de variações de sinal na sequência
+    \(p(c), p'(c), p''(c), \ldots, p^{(n)}(c)\). Então o número de raízes reais em \((a,b]\),
+    contadas com multiplicidade, satisfaz</p>
+    <p>\[ N(a,b) \le V(a) - V(b), \qquad
+       \bigl[V(a)-V(b)\bigr] - N(a,b) \ \text{é par}. \]</p>
+  </div>
+
+  <p>É a mesma estrutura de Descartes, agora localizada: uma cota com paridade, em vez de um
+  número. De fato, Descartes é o caso particular \(a = 0\), \(b = \infty\).</p>
+
+  <p>O ganho é poder perguntar sobre qualquer pedaço da reta. O que falta é a igualdade, e foi
+  Sturm quem a conseguiu.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Sturm, e a contagem exata</h2>
+
+  <p>Em 1829, Sturm resolveu o problema em definitivo. A troca é sutil na forma e enorme na
+  consequência: no lugar da sequência das derivadas, usa-se a sequência dos restos das
+  divisões sucessivas, <strong>com o sinal trocado</strong>.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Sequência e teorema de Sturm</span>
+    <p>Para \(p\) sem raízes múltiplas,</p>
+    <p>\[ p_0 = p, \qquad p_1 = p', \qquad
+       p_{k+1} = -\,\text{resto}(p_{k-1}, p_k), \]</p>
+    <p>até o resto ser nulo. Então, se \(p(a) \ne 0\) e \(p(b) \ne 0\), o número de raízes
+    reais <em>distintas</em> em \((a,b]\) é <strong>exatamente</strong></p>
+    <p>\[ N(a,b) = V(a) - V(b). \]</p>
+  </div>
+
+  <p>Não há mais "ou menos, de dois em dois". A desigualdade virou igualdade, e o sinal
+  negativo na recorrência é o que faz isso acontecer.</p>
+
+  <div data-widget="sturm"></div>
+
+  <div class="bloco ex">
+    <span class="rotulo">A sequência do nosso polinômio, e a contagem conferida</span>
+    <p>Os seis polinômios da sequência, de grau 5 a grau 0:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(k\)</th><th>grau</th><th>coeficientes</th></tr>
+      <tr><td>0</td><td>5</td><td>\(+1\ -3\ -5\ +15\ +4\ -12\)</td></tr>
+      <tr><td>1</td><td>4</td><td>\(+5\ -12\ -15\ +30\ +4\)</td></tr>
+      <tr><td>2</td><td>3</td><td>\(+3{,}44\ -7{,}20\ -6{,}80\ +11{,}52\)</td></tr>
+      <tr><td>3</td><td>2</td><td>\(+8{,}33\ -10{,}22\ -9{,}14\)</td></tr>
+      <tr><td>4</td><td>1</td><td>\(+6{,}68\ -8{,}25\)</td></tr>
+      <tr><td>5</td><td>0</td><td>\(+9{,}06\)</td></tr>
+    </table>
+    </div>
+    <p>E a contagem, em nove intervalos, contra o gabarito:</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>intervalo</th><th>Sturm</th><th>de verdade</th></tr>
+      <tr><td>\((-4,4]\)</td><td>5</td><td>5</td></tr>
+      <tr><td>\((-4,0]\)</td><td>2</td><td>2</td></tr>
+      <tr><td>\((0,4]\)</td><td>3</td><td>3</td></tr>
+      <tr><td>\((-4,-2]\)</td><td>1</td><td>1</td></tr>
+      <tr><td>\((-2,0]\)</td><td>1</td><td>1</td></tr>
+      <tr><td>\((0,2]\)</td><td>2</td><td>2</td></tr>
+      <tr><td>\((2,4]\)</td><td>1</td><td>1</td></tr>
+      <tr><td>\((1{,}5;\ 2{,}5]\)</td><td>1</td><td>1</td></tr>
+      <tr><td>\((0{,}5;\ 1{,}5]\)</td><td>1</td><td>1</td></tr>
+    </table>
+    </div>
+    <p>Nove acertos em nove. E note as duas linhas em que o extremo <em>é</em> uma raiz,
+    \((-4,-2]\) e \((-2,0]\): a convenção semiaberta resolve a ambiguidade, atribuindo o
+    \(-2\) ao primeiro intervalo e não ao segundo.</p>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">As duas restrições, e o que fazer com elas</span>
+    <p><strong>Raízes múltiplas.</strong> O teorema exige que \(p\) não as tenha, e a saída é
+    dividir \(p\) por \(\mathrm{mdc}(p, p')\), que remove as multiplicidades e preserva o
+    conjunto de raízes. A aula 8 mostra como detectar que elas existem.</p>
+    <p><strong>Custo e estabilidade.</strong> Construir a sequência exige \(n\) divisões
+    polinomiais, e em ponto flutuante os coeficientes podem crescer ou degenerar para grau
+    alto. Para grau moderado com coeficientes exatos, Sturm é imbatível; para grau 50 com
+    coeficientes medidos, nem tente.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. Isolar, automaticamente</h2>
+
+  <p>Com Sturm em mãos, localizar deixa de depender de olho. O algoritmo é uma bisseção, só
+  que <em>sobre a contagem</em> em vez de sobre o sinal:</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Isolamento por bisseção de Sturm</span>
+    <ol>
+      <li>Comece com um intervalo que contenha todas as raízes, dado pelas cotas da seção 3;</li>
+      <li>Conte as raízes nele. Se forem zero, descarte;</li>
+      <li>Se for uma, guarde o intervalo: a raiz está isolada;</li>
+      <li>Se forem duas ou mais, parta ao meio e repita nas duas metades.</li>
+    </ol>
+  </div>
+
+  <p>No fim sobra uma lista de intervalos, cada um com exatamente uma raiz, e cada um pronto
+  para a bisseção da aula 4 ou para a <code>brentq</code>. Rodando em \([-5,5]\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>intervalo isolado</th><th>raiz refinada</th></tr>
+    <tr><td>\((-2{,}500;\ -1{,}250]\)</td><td>\(-2{,}000000000\)</td></tr>
+    <tr><td>\((-1{,}250;\ 0{,}000]\)</td><td>\(-1{,}000000000\)</td></tr>
+    <tr><td>\((0{,}000;\ 1{,}250]\)</td><td>\(1{,}000000000\)</td></tr>
+    <tr><td>\((1{,}250;\ 2{,}500]\)</td><td>\(2{,}000000000\)</td></tr>
+    <tr><td>\((2{,}500;\ 5{,}000]\)</td><td>\(3{,}000000000\)</td></tr>
+  </table>
+  </div>
+
+  <p>As cinco batem com o <code>np.roots</code>, que usa autovalores da matriz companheira e
+  não sabe nada de Sturm, com diferença máxima de \(5\times10^{-15}\). Duas rotas
+  completamente diferentes, mesma resposta.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. Os pontos de Lagrange</h2>
+
+  <p>No problema restrito de três corpos, por exemplo Sol, Terra e um satélite de massa
+  desprezível, existem cinco posições de equilíbrio no referencial girante. Os três colineares
+  saem de polinômios de quinto grau. Para \(L_1\), entre os dois corpos, a distância
+  adimensional \(r\) ao corpo menor satisfaz</p>
+
+  <p>\[ r^5 - (3-\mu)r^4 + (3-2\mu)r^3 - \mu r^2 + 2\mu r - \mu = 0, \]</p>
+
+  <p>com \(\mu = m_2/(m_1+m_2)\). Para o sistema Sol-Terra,
+  \(\mu = 3{,}0034\times10^{-6}\).</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">As três etapas, em ordem</span>
+    <p><strong>Descartes.</strong> \(V(p) = 5\) e \(V(p(-x)) = 0\). O segundo número resolve
+    metade do problema de uma vez: <em>não existe</em> raiz negativa, sem ambiguidade
+    nenhuma. O primeiro deixa "5, 3 ou 1", que não serve de nada.</p>
+    <p><strong>Sturm.</strong> Zero raízes em \((-4,0]\), uma em \((0,1]\), zero em
+    \((1,4]\). E refinando: uma em \((0{,}005;\ 0{,}02]\). A ambiguidade de Descartes some, e
+    o intervalo de busca já está pronto.</p>
+    <p><strong>Refinamento.</strong> A <code>brentq</code> naquele intervalo dá</p>
+    <p>\[ r_{L_1} = 0{,}0099703138. \]</p>
+  </div>
+
+  <p>Com a distância Terra-Sol de \(1{,}496\times10^{8}\) km, isso é <strong>1 491 558
+  km</strong> da Terra, na direção do Sol. A aproximação clássica, o raio de Hill
+  \((\mu/3)^{1/3} = 0{,}0100038\), dá 1 496 564 km, e erra 0,34 %.</p>
+
+  <p>Repetindo para \(L_2\), que fica do outro lado,
+  \(r^5 + (3-\mu)r^4 + (3-2\mu)r^3 - \mu r^2 - 2\mu r - \mu = 0\), a raiz é 0,0100370 e a
+  distância é 1 501 539 km.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Onde estão os telescópios</span>
+    <p>O SOHO observa o Sol parado em \(L_1\), com o Sol sempre à frente e a Terra sempre
+    atrás. O telescópio espacial James Webb orbita \(L_2\), onde Sol, Terra e Lua ficam todos
+    do mesmo lado e o protetor solar pode bloquear os três de uma vez.</p>
+    <p>Os dois estão a cerca de um milhão e meio de quilômetros da Terra, e a conta que define
+    onde exatamente é a desta aula: uma quíntica, um teorema de 1829 para contar as raízes, e
+    um método de 1817 para refinar a que interessa.</p>
+    <p>Vale notar que só uma das cinco raízes é fisicamente aceitável. As outras quatro são
+    complexas, e nenhum método numérico sabe disso: quem decide que a resposta é real,
+    positiva e menor que 1 é quem montou o problema.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/polinomios.py">
+      <span class="numero">Programa</span>
+      <h3>polinomios.py</h3>
+      <p>Horner com o quociente conferido pela multiplicação de volta, as três cotas, a regra
+      de Descartes, a sequência de Sturm testada em nove intervalos, o isolamento automático,
+      e a quíntica dos pontos de Lagrange resolvida nas três etapas.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>Horner bate com <code>np.polyval</code> em cinco pontos, e o quociente reconstrói
+    \(p\) exatamente quando multiplicado de volta, verificado por
+    <code>np.allclose</code>.</li>
+    <li>As três cotas contêm a maior raiz, verificado por <code>assert</code>.</li>
+    <li>Descartes dá 3 e 2, que são os valores exatos neste polinômio.</li>
+    <li>Sturm acerta nos nove intervalos, com zero discordâncias.</li>
+    <li>As cinco raízes isoladas e refinadas batem com <code>np.roots</code> em
+    \(5\times10^{-15}\).</li>
+    <li>A raiz de \(L_1\) obtida pela nossa rota bate com a do <code>np.roots</code> em
+    \(1{,}7\times10^{-16}\).</li>
+  </ul>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 7.1 · Quando Descartes não basta</span>
+    <p>Para \(p(x) = x^5 - x^4 + x^3 - x^2 + x - 1\), aplique Descartes, depois Sturm, e
+    explique a diferença entre as duas respostas.</p>
+
+    <p><strong>Descartes.</strong> Os coeficientes alternam de sinal do primeiro ao último:
+    \(+1, -1, +1, -1, +1, -1\). São <strong>cinco</strong> variações, de modo que \(n_+\) é 5,
+    3 ou 1. A cota não exclui praticamente nada.</p>
+    <p>Para \(p(-x)\), os coeficientes são \(-1,-1,-1,-1,-1,-1\): zero variações, logo
+    \(n_- = 0\) exatamente. Essa metade ficou resolvida.</p>
+
+    <p><strong>Sturm.</strong> A contagem em \((-4,4]\) dá <strong>1</strong>, e em
+    \((0{,}5;\ 1{,}5]\) dá 1. Há uma única raiz real, e ela está perto de 1.</p>
+
+    <p><strong>A raiz.</strong> Note que \(p(1) = 1-1+1-1+1-1 = 0\): a raiz é exatamente
+    \(x = 1\), e dava para vê-la sem método nenhum. As outras quatro são complexas, e de fato
+    \(p(x) = (x-1)(x^4+x^2+1)\), cujo segundo fator não tem raiz real porque é soma de termos
+    não negativos mais 1.</p>
+
+    <p><strong>A diferença entre as duas respostas.</strong> Descartes disse "5, 3 ou 1" e a
+    verdade era 1: a cota errou por quatro. Sturm disse 1, e acabou.</p>
+
+    <p>O motivo da folga de Descartes é que ele conta variações de sinal <em>dos
+    coeficientes</em>, que é uma informação muito indireta sobre onde a curva cruza o eixo. Um
+    polinômio com coeficientes alternados tem o máximo de variações possível, e isso não diz
+    quase nada: aqui, quatro das cinco "candidatas" eram pares complexos.</p>
+
+    <div class="bloco def">
+      <span class="rotulo">A estratégia que o exercício sugere</span>
+      <p>Use Descartes primeiro, porque custa uma passada pelos coeficientes, e fique com o que
+      ele resolver de graça: tipicamente, um dos dois lados. Depois chame Sturm só para o lado
+      que ficou ambíguo. Foi exatamente o que a seção 8 fez com a quíntica de Lagrange.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 7.2 · Horner contra a forma ingênua, medido</span>
+    <p>Compare Horner com a avaliação ingênua em custo e em precisão, para um polinômio de
+    grau alto. Qual das duas vantagens é a maior?</p>
+
+    <p><strong>O custo é fácil de contar.</strong> A forma ingênua, \(\sum a_i x^i\) com cada
+    potência calculada do zero, custa \(n(n+1)/2\) multiplicações; calculando as potências por
+    acumulação, cai para \(2n\). Horner usa \(n\). Para \(n = 20\), são 210, 40 e 20: uma
+    diferença de dez vezes sobre a versão ingênua e de duas sobre a acumulada.</p>
+
+    <p><strong>A precisão é mais interessante.</strong> Avaliando
+    \(p(x) = (x-1)^{10}\), expandido em coeficientes binomiais, perto de \(x=1\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>\(x\)</th><th>valor exato</th><th>Horner</th><th>potências acumuladas</th>
+          <th>\(\kappa\) da soma</th></tr>
+      <tr><td>1,01</td><td>\(1{,}0\times10^{-20}\)</td><td>\(-8{,}9\times10^{-16}\)</td>
+          <td>\(+5{,}2\times10^{-14}\)</td><td>\(1{,}1\times10^{23}\)</td></tr>
+      <tr><td>1,001</td><td>\(1{,}0\times10^{-30}\)</td><td>\(+6{,}4\times10^{-15}\)</td>
+          <td>\(+3{,}6\times10^{-14}\)</td><td>\(1{,}0\times10^{33}\)</td></tr>
+    </table>
+    </div>
+
+    <p><strong>A leitura honesta.</strong> As duas erram tudo. Horner erra 58 vezes menos na
+    primeira linha e 5,5 vezes menos na segunda, o que é uma vitória real e completamente
+    irrelevante: nas duas linhas o resultado não tem um dígito correto, e nem a ordem de
+    grandeza.</p>
+
+    <p>O motivo é a aula 3, e está na última coluna. O número de condição da soma,
+    \(\sum|a_ix^i| / |p(x)|\), vale \(10^{23}\) em \(x = 1{,}01\): com
+    \(\kappa\varepsilon \approx 10^{7}\), a previsão é de erro relativo de dez milhões por
+    cento, e é isso que se vê. <strong>Nenhum algoritmo salva um problema assim.</strong></p>
+
+    <p>A forma que acerta é não expandir: avaliar \((x-1)^{10}\) como potência de uma
+    diferença dá o valor exato em qualquer \(x\), porque ali não há soma de parcelas grandes
+    para dar resultado pequeno. É a aula 2 outra vez, e a mesma lição do exercício resolvido
+    3.1 sobre \(e^{-20}\).</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">A conclusão que vale para o resto da unidade</span>
+      <p>Horner vale a pena pelo <em>custo</em>, que é real e garantido, e pelo quociente que
+      ele entrega. Não espere dele um conserto de precisão: a precisão de uma avaliação
+      polinomial é decidida pelos coeficientes, e a aula 8 mostra, com o polinômio de
+      Wilkinson, o quanto isso pode ser grave.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>7.1</b> Implemente as três cotas da seção 3 e aplique-as a dez polinômios
+      aleatórios de grau 6. Para cada um, calcule a razão entre a menor cota e o módulo da
+      maior raiz, e faça o histograma. Qual das três ganha mais vezes?</li>
+
+      <li><b>7.2</b> Escreva uma função que, dado um polinômio, devolva o par de Descartes e
+      depois a contagem de Sturm, e aplique-a aos polinômios de Legendre \(P_n\) para
+      \(n = 3\) a 8. Verifique que todos têm \(n\) raízes reais em \((-1,1)\), que é o que
+      torna a quadratura gaussiana da aula 10 possível.</li>
+
+      <li><b>7.3</b> Isole e refine todas as raízes reais de
+      \(p(x) = x^6 - 2x^5 - 26x^4 + 28x^3 + 145x^2 - 26x - 120\), usando só os métodos desta
+      aula. Depois confira com <code>np.roots</code> e diga quantos dígitos coincidem.</li>
+
+      <li><b>7.4</b> Construa um polinômio com raiz dupla e mostre que a sequência de Sturm
+      degenera: ela termina antes do grau zero. Em seguida divida por
+      \(\mathrm{mdc}(p,p')\) usando <code>numpy.polydiv</code> e verifique que a sequência
+      volta ao normal.</li>
+
+      <li><b>7.5</b> Meça a estabilidade da sequência de Sturm: para polinômios de grau 5 a 25
+      com coeficientes aleatórios, conte em quantos casos a contagem de Sturm discorda do
+      número de raízes reais dado por <code>np.roots</code>. A partir de que grau o método
+      deixa de ser confiável em <code>float64</code>?</li>
+
+      <li><b>7.6</b> Resolva a quíntica de \(L_3\),
+      \(r^5 + (2+\mu)r^4 + (1+2\mu)r^3 - (1-\mu)r^2 - 2(1-\mu)r - (1-\mu) = 0\), em que \(r\)
+      é medido a partir do corpo maior, para o sistema Sol-Terra. Onde fica \(L_3\), e por que
+      nunca se vê um satélite lá?</li>
+
+      <li><b>7.7</b> Repita a conta de \(L_1\) para o sistema Terra-Lua
+      (\(\mu = 0{,}01215\)) e compare com o raio de Hill. O erro da aproximação clássica é
+      maior ou menor que no caso Sol-Terra? Explique a partir de \(\mu\).</li>
+
+      <li><b>7.8</b> Em meia página: a aula apresenta três teoremas de contagem, cada um mais
+      forte e mais caro que o anterior. Descreva uma situação em que você usaria cada um, e
+      explique por que não faz sentido usar sempre o mais forte.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula06.html"><small>Aula anterior</small>← 6. Ponto fixo</a>
+    <a class="prox" href="aula09.html"><small>Próxima aula</small>9. Interpolação e ajuste →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221057"></script>
+</body>
+</html>
