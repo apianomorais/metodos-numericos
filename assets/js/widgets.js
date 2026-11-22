@@ -72,12 +72,18 @@
         '<span class="rot">' + c.rot + '</span><span class="val" data-k="' + c.k + '">·</span>' }));
     });
     pai.appendChild(g);
-    return function (vals) {
+    var por = function (vals) {
       Object.keys(vals).forEach(function (k) {
         var n = g.querySelector('[data-k="' + k + '"]');
         if (n) n.innerHTML = vals[k];
       });
     };
+    /* alguns widgets trocam de vista e precisam trocar os rotulos junto */
+    por.rotular = function (rots) {
+      var ns = g.querySelectorAll('.rot');
+      rots.forEach(function (r, i) { if (ns[i]) ns[i].textContent = r; });
+    };
+    return por;
   }
 
   function tipografar(no) {
@@ -651,6 +657,262 @@
           + 'ordem de \\(h^4\\) para \\(h^2\\).';
       }
       saida.innerHTML = txt;
+      tipografar(saida);
+      tipografar(raiz);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
+
+  /* =================================================================
+     4. As regras de integração, e como elas convergem
+     A primeira vista mostra o que cada regra faz com a função: o
+     trapézio põe retas, Simpson põe parábolas, e Gauss põe pontos em
+     lugares que não parecem ter lógica até que se veja o erro. A
+     segunda transforma isso em retas num gráfico log-log, onde a
+     ordem de cada método é literalmente a inclinação, e onde a queda
+     exponencial de Gauss se distingue à primeira vista das potências
+     de h.
+     ================================================================= */
+  REGISTRO.integracao = function (raiz) {
+    var corpo = moldura(raiz, 'Trapézios, Simpson e Gauss');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var regra = 0, nav = 5, vista = 0;
+    var A = 0, B = Math.PI, EXATO = 2;
+    function f(x) { return Math.sin(x); }
+
+    opcoes(corpo, [{ rot: 'As regras', v: 0 },
+                   { rot: 'Como convergem', v: 1 }], 0,
+      function (v) { vista = v; desenhar(); });
+
+    opcoes(corpo, [{ rot: 'Trapézios', v: 0 },
+                   { rot: 'Simpson', v: 1 },
+                   { rot: 'Gauss', v: 2 }], 0,
+      function (v) { regra = v; desenhar(); });
+    /* opcoes devolve um seletor, nao o no; a barra de botoes acabou de
+       ser acrescentada, entao e a ultima do corpo */
+    var barraRegra = corpo.querySelectorAll('.botoes');
+    barraRegra = barraRegra[barraRegra.length - 1];
+
+    var dN = deslizante(corpo, 'Avaliações da função:', 3, 15, 2, nav,
+      function (v) { nav = v; desenhar(); },
+      function (v) { return v + ' pontos'; });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'Valor obtido', k: 'val' },
+      { rot: 'Erro', k: 'err' },
+      { rot: 'Exato', k: 'ex' },
+      { rot: 'Ordem do método', k: 'ord' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    /* as três regras, com k avaliações. Trapézio e Simpson usam k-1
+       intervalos; Gauss usa k nós. */
+    function aplicar(r, k) {
+      if (r === 0) return N.trapezios(f, A, B, k - 1);
+      if (r === 1) return N.simpson(f, A, B, k - 1);
+      return N.quadraturaGauss(f, A, B, k);
+    }
+
+    function desenhar() {
+      var p = G.preparar(cv, Math.min(280, Math.max(220, cv.clientWidth * 0.30)));
+      barraRegra.style.display = vista === 0 ? '' : 'none';
+      dN.parentNode.style.display = vista === 0 ? '' : 'none';
+
+      if (vista === 0) {
+        var g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: -0.15, xmax: Math.PI + 0.15, ymin: 0, ymax: 1.2,
+          rotX: 'x', rotY: 'sen x', divY: 4,
+          margem: { e: 58, d: 16, c: 12, b: 34 },
+          formataY: function (v) { return v.toFixed(1); },
+          marcasX: [{ v: 0, r: '0' }, { v: Math.PI / 2, r: 'π/2' },
+                    { v: Math.PI, r: 'π' }]
+        });
+        var ct = g.ct, i;
+        var k = nav;
+
+        /* a área sob a regra, pintada */
+        ct.save();
+        if (regra === 0) {
+          var h = (B - A) / (k - 1);
+          for (i = 0; i < k - 1; i++) {
+            var xa = A + i * h, xb = xa + h;
+            ct.beginPath();
+            ct.moveTo(g.X(xa), g.Y(0)); ct.lineTo(g.X(xa), g.Y(f(xa)));
+            ct.lineTo(g.X(xb), g.Y(f(xb))); ct.lineTo(g.X(xb), g.Y(0));
+            ct.closePath();
+            ct.fillStyle = 'rgba(89,99,111,0.14)'; ct.fill();
+            ct.strokeStyle = G.COR.mestra; ct.lineWidth = 1.4; ct.stroke();
+          }
+        } else if (regra === 1) {
+          var np_ = k - 1;
+          var h2 = (B - A) / np_;
+          for (i = 0; i < np_; i += 2) {
+            var x0 = A + i * h2, x1 = x0 + h2, x2 = x0 + 2 * h2;
+            var y0 = f(x0), y1 = f(x1), y2 = f(x2);
+            ct.beginPath();
+            ct.moveTo(g.X(x0), g.Y(0));
+            for (var t = 0; t <= 30; t++) {
+              var xx = x0 + 2 * h2 * t / 30, s_ = (xx - x1) / h2;
+              var yy = y1 + 0.5 * s_ * (y2 - y0) + 0.5 * s_ * s_ * (y2 - 2 * y1 + y0);
+              ct.lineTo(g.X(xx), g.Y(yy));
+            }
+            ct.lineTo(g.X(x2), g.Y(0)); ct.closePath();
+            ct.fillStyle = 'rgba(44,95,141,0.14)'; ct.fill();
+            ct.strokeStyle = G.COR.azul; ct.lineWidth = 1.4; ct.stroke();
+          }
+        } else {
+          var gl = N.gaussLegendre(k);
+          var c = (B - A) / 2, d = (B + A) / 2;
+          for (i = 0; i < k; i++) {
+            var xg = c * gl.no[i] + d;
+            var larg = gl.peso[i] * c;
+            ct.fillStyle = 'rgba(168,96,31,0.16)';
+            ct.fillRect(g.X(xg - larg / 2), g.Y(f(xg)),
+                        g.X(larg) - g.X(0), g.Y(0) - g.Y(f(xg)));
+            ct.strokeStyle = G.COR.bronze; ct.lineWidth = 1.2;
+            ct.strokeRect(g.X(xg - larg / 2), g.Y(f(xg)),
+                          g.X(larg) - g.X(0), g.Y(0) - g.Y(f(xg)));
+          }
+        }
+
+        /* a função por cima */
+        ct.beginPath();
+        for (i = 0; i <= 400; i++) {
+          var x = A + (B - A) * i / 400;
+          if (i === 0) ct.moveTo(g.X(x), g.Y(f(x))); else ct.lineTo(g.X(x), g.Y(f(x)));
+        }
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2; ct.stroke();
+
+        /* os pontos efetivamente avaliados */
+        var pts = [];
+        if (regra === 2) {
+          var gl2 = N.gaussLegendre(k), c2 = (B - A) / 2, d2 = (B + A) / 2;
+          for (i = 0; i < k; i++) pts.push(c2 * gl2.no[i] + d2);
+        } else {
+          for (i = 0; i < k; i++) pts.push(A + (B - A) * i / (k - 1));
+        }
+        pts.forEach(function (xv) {
+          ct.fillStyle = G.COR.vinho;
+          ct.beginPath(); ct.arc(g.X(xv), g.Y(f(xv)), 3.4, 0, 2 * Math.PI); ct.fill();
+        });
+        ct.restore();
+
+        var v = aplicar(regra, k);
+        mostrar({
+          val: N.fmt(v, 8), err: N.sci(Math.abs(v - EXATO), 2),
+          ex: '2', ord: ['2', '4', 'exponencial'][regra]
+        });
+
+        var nomes = ['retas', 'parábolas', 'retângulos de peso'];
+        mostrar.rotular(['Valor obtido', 'Erro', 'Exato', 'Ordem do método']);
+        saida.innerHTML =
+          'Com ' + k + ' avaliações, a regra troca a função por ' + nomes[regra]
+          + ' e integra isso. '
+          + (regra === 2
+            ? 'Repare que os pontos <strong>não estão igualmente espaçados</strong>, e '
+              + 'que nenhum deles cai nas bordas. As posições foram escolhidas junto '
+              + 'com os pesos, e é daí que vem a exatidão até grau \\(2n-1\\): com '
+              + k + ' pontos, até grau ' + (2 * k - 1) + '. Subir o número de pontos '
+              + 'sobe o grau, e é daí que vem o despencar do erro.'
+            : 'Os pontos estão igualmente espaçados, e as bordas sempre entram. Cada '
+              + 'pedaço da malha recebe o mesmo tratamento dos outros, de modo que a '
+              + 'regra composta é exata só até grau <strong>'
+              + (regra === 1 ? 3 : 1) + '</strong>, e segue sendo só até grau '
+              + (regra === 1 ? 3 : 1) + ' com qualquer número de pontos: acrescentar '
+              + 'avaliações encurta \\(h\\), não eleva o grau. Essa é a diferença de '
+              + 'fundo para Gauss.')
+          + ' Compare o erro das três com o mesmo número de pontos.';
+      } else {
+        /* log-log do erro contra avaliações */
+        var ks = [], i2;
+        for (i2 = 3; i2 <= 21; i2 += 2) ks.push(i2);
+        var series = [0, 1, 2].map(function (r) {
+          return ks.map(function (k) {
+            return Math.max(Math.abs(aplicar(r, k) - EXATO), 1e-17);
+          });
+        });
+
+        var g2 = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: Math.log10(3), xmax: Math.log10(21),
+          ymin: -17, ymax: 1,
+          rotX: 'avaliações da função', rotY: 'log₁₀ do erro', divY: 6,
+          margem: { e: 52, d: 16, c: 12, b: 36 },
+          marcasX: [3, 5, 9, 15, 21].map(function (t) {
+            return { v: Math.log10(t), r: String(t) };
+          }),
+          formataY: function (v) { return String(Math.round(v)); }
+        });
+        var ct2 = g2.ct;
+        var cores = [G.COR.mestra, G.COR.azul, G.COR.bronze];
+        var rots = ['trapézios', 'Simpson', 'Gauss'];
+        ct2.save();
+        series.forEach(function (e, r) {
+          ct2.beginPath();
+          e.forEach(function (v, j) {
+            var X = g2.X(Math.log10(ks[j])), Y = g2.Y(Math.log10(v));
+            if (j === 0) ct2.moveTo(X, Y); else ct2.lineTo(X, Y);
+          });
+          ct2.strokeStyle = cores[r]; ct2.lineWidth = 2; ct2.stroke();
+          e.forEach(function (v, j) {
+            ct2.fillStyle = cores[r];
+            ct2.beginPath();
+            ct2.arc(g2.X(Math.log10(ks[j])), g2.Y(Math.log10(v)), 2.6, 0, 2 * Math.PI);
+            ct2.fill();
+          });
+        });
+        /* legenda embaixo a esquerda: no alto ela cobria o inicio das retas */
+        var ly = g2.y1 - 10 - 3 * 15;
+        ct2.fillStyle = 'rgba(255,255,255,0.9)';
+        ct2.fillRect(g2.x0 + 6, ly, 92, 8 + 3 * 15);
+        rots.forEach(function (rt, r) {
+          var yy = ly + 12 + r * 15;
+          ct2.fillStyle = cores[r]; ct2.fillRect(g2.x0 + 12, yy - 4, 12, 4);
+          rotulo(ct2, rt, g2.x0 + 29, yy, G.COR.tinta, 'left');
+        });
+        ct2.restore();
+
+        /* A inclinação se mede no trecho assintótico (os cinco últimos pontos) e
+           contra o passo h = π/(k-1), não contra o custo k: é assim que a ordem
+           está definida. Medida contra k, esta mesma curva daria 2,13 e 4,27,
+           porque o fator (1 - 1/k)^p só some devagar. */
+        function incl(e) {
+          var j1 = e.length - 1;
+          while (j1 > 0 && e[j1] < 1e-15) j1--;
+          var j0 = Math.max(0, j1 - 4), sx = 0, sy = 0, sxx = 0, sxy = 0, m = 0, j;
+          for (j = j0; j <= j1; j++) {
+            var Xj = Math.log10(ks[j] - 1), Yj = Math.log10(e[j]);
+            sx += Xj; sy += Yj; sxx += Xj * Xj; sxy += Xj * Yj; m++;
+          }
+          return (m * sxy - sx * sy) / (m * sxx - sx * sx);
+        }
+        mostrar.rotular(['Inclinação, trapézios', 'Inclinação, Simpson',
+                         'Previsto', 'Gauss']);
+        mostrar({
+          val: N.fmt(-incl(series[0]), 2), err: N.fmt(-incl(series[1]), 2),
+          ex: '2 e 4', ord: '4·10⁻¹⁶ em 9'
+        });
+
+        saida.innerHTML =
+          'Num gráfico log-log, um erro que cai como \\(h^p\\) é uma <strong>reta de '
+          + 'inclinação \\(-p\\)</strong>, e é por isso que esta é a figura certa '
+          + 'para ler a ordem de um método. As duas primeiras fichas trazem as '
+          + 'inclinações medidas de trapézios e de Simpson, contra os 2 e 4 previstos. '
+          + 'Elas saem do trecho final e são medidas contra o <strong>passo</strong> '
+          + '\\(h=\\pi/(k-1)\\), que é como a ordem está definida; lidas contra o eixo '
+          + 'horizontal desta figura, que conta <em>avaliações</em>, dariam 2,13 e 4,27, '
+          + 'porque o fator \\((1-1/k)^p\\) só desaparece devagar.'
+          + ' Gauss não é reta nenhuma: ele despenca e bate no piso da precisão de '
+          + 'máquina com nove avaliações. Uma curva que <em>encurva para baixo</em> '
+          + 'em log-log converge mais rápido que qualquer potência, e é isso que '
+          + 'significa convergência exponencial.';
+      }
       tipografar(saida);
       tipografar(raiz);
     }

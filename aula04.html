@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 4: Integração numérica | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611220920">
+<script src="assets/js/comum.js?v=202611220920"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
+      <span class="grupo">Métodos</span>
+      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
+      <a href="aula04.html" class="num ativo" title="Aula 4: Integração numérica">4</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Trocar a função por um polinômio</a></li>
+    <li><a href="#s2">2. Trapézios, e a ordem que sai de Taylor</a></li>
+    <li><a href="#s3">3. Simpson, e o grau que passa de graça</a></li>
+    <li><a href="#s4">4. Richardson: Simpson sem inventá-lo</a></li>
+    <li><a href="#s5">5. Romberg</a></li>
+    <li><a href="#s6">6. Quadratura gaussiana</a></li>
+    <li><a href="#s7">7. Onde tudo isso falha</a></li>
+    <li><a href="#s8">8. O piso de arredondamento</a></li>
+    <li><a href="#s9">9. No Spyder</a></li>
+    <li><a href="#s10">10. Exercícios resolvidos</a></li>
+    <li><a href="#s11">11. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 4 · Resolver, interpolar, integrar</p>
+  <h1>Integração numérica</h1>
+  <p class="subtitulo">Toda regra de integração é a mesma receita: trocar a função por um polinômio e integrar o polinômio. O que muda é o grau do polinômio e, na quadratura gaussiana, onde se escolhe medir a função. Essa segunda liberdade vale mais que a primeira, e é a mesma lição dos nós de Chebyshev.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Deduzir as regras do trapézio e de Simpson e suas ordens de erro;</li>
+      <li>Entender por que Simpson, feita de parábolas, acerta também as cúbicas;</li>
+      <li>Obter Simpson por extrapolação de Richardson e construir a tabela de Romberg;</li>
+      <li>Explicar por que Gauss acerta polinômios até grau \(2n-1\) com \(n\) pontos;</li>
+      <li>Reconhecer os dois casos em que as regras falham, e o que fazer em cada um;</li>
+      <li>Estimar onde fica o piso de arredondamento, e por que não se deve chegar perto dele.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Trocar a função por um polinômio</h2>
+
+  <p>Integrar numericamente é necessário com mais frequência do que derivar: derivadas de funções
+  elementares sempre têm forma fechada, e integrais quase nunca. A função erro, as integrais de
+  Fresnel e as funções elípticas existem como nomes justamente porque as integrais que as definem
+  não se exprimem em funções elementares.</p>
+
+  <p>A estratégia de Newton-Cotes é a mesma da aula 3, aplicada de novo: onde a função é difícil,
+  ponha um polinômio no lugar dela. Polinômios se integram exatamente, e o erro da integral é a
+  integral do erro de interpolação, que a aula 3 já sabe estimar.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A família</span>
+    <p>Dividindo \([a,b]\) em \(n\) intervalos de largura \(h = (b-a)/n\) e trocando a função por
+    um polinômio de grau \(m\) em cada grupo de \(m+1\) pontos:</p>
+    <ul>
+      <li>\(m=0\): regra do retângulo, erro \(O(h)\);</li>
+      <li>\(m=1\): <strong>trapézio</strong>, erro \(O(h^2)\);</li>
+      <li>\(m=2\): <strong>Simpson</strong>, erro \(O(h^4)\), e não \(O(h^3)\);</li>
+      <li>\(m=3\): Simpson 3/8, erro \(O(h^4)\) também.</li>
+    </ul>
+    <p>Os dois saltos de ordem, de \(m=1\) para \(m=2\) e a ausência de ganho de \(m=2\) para
+    \(m=3\), são o assunto da seção 3.</p>
+  </div>
+
+  <p>Subir indefinidamente o grau não funciona, pelo motivo que a aula 3 já expôs: as regras de
+  Newton-Cotes de grau alto têm o fenômeno de Runge embutido, e a partir de \(m=8\) elas passam a
+  ter <strong>pesos negativos</strong>, o que amplifica o erro de arredondamento. Na prática,
+  usa-se grau baixo em muitos pedaços, ou se muda de estratégia, como faz Gauss.</p>
+
+  <div data-widget="integracao"></div>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Trapézios, e a ordem que sai de Taylor</h2>
+
+  <p>Num intervalo \([x_0, x_1]\) de largura \(h\), trocar \(f\) pela reta que passa pelas duas
+  pontas e integrar dá a área do trapézio, \(\tfrac{h}{2}(f_0+f_1)\). Somando sobre \(n\)
+  intervalos, os pontos internos aparecem duas vezes:</p>
+
+  <p>\[ T(h) = h\left[\tfrac{1}{2}f_0 + f_1 + f_2 + \cdots + f_{n-1} + \tfrac{1}{2}f_n\right]. \]</p>
+
+  <h3>O erro num intervalo</h3>
+
+  <p>Expandindo \(f\) em torno do ponto médio \(\bar{x}\) do intervalo, o que simplifica muito a
+  conta porque mata os termos ímpares:</p>
+
+  <p>\[ f(x) = f(\bar{x}) + f'(\bar{x})s + \tfrac{1}{2}f''(\bar{x})s^2 + \cdots,
+     \qquad s = x - \bar{x}. \]</p>
+
+  <p>Integrando de \(-h/2\) a \(h/2\), os termos ímpares se anulam por simetria:</p>
+
+  <p>\[ \int_{x_0}^{x_1} f\,dx = hf(\bar{x}) + \frac{h^3}{24}f''(\bar{x}) + O(h^5). \]</p>
+
+  <p>E o trapézio, avaliando \(f\) em \(s=\pm h/2\) e somando:</p>
+
+  <p>\[ \frac{h}{2}\bigl[f(\bar{x}-\tfrac{h}{2}) + f(\bar{x}+\tfrac{h}{2})\bigr]
+     = hf(\bar{x}) + \frac{h^3}{8}f''(\bar{x}) + O(h^5). \]</p>
+
+  <p>Subtraindo, o erro num intervalo é</p>
+
+  <p>\[ \left(\frac{1}{24}-\frac{1}{8}\right)h^3 f'' = -\frac{h^3}{12}f''(\bar{x}) + O(h^5). \]</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O erro total</span>
+    <p>Somando sobre os \(n = (b-a)/h\) intervalos, cada um contribuindo com \(h^3\), o total
+    ganha um fator \(n\) e perde uma potência de \(h\):</p>
+    <p>\[ E_T = -\frac{(b-a)h^2}{12}\,\overline{f''} = O(h^2). \]</p>
+    <p>Dobrar \(n\) divide o erro por 4. O programa mede \(2{,}011\), \(2{,}003\), \(2{,}001\),
+    \(2{,}000\): a previsão é verificável e se verifica.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Simpson, e o grau que passa de graça</h2>
+
+  <p>Usando três pontos e uma parábola por par de intervalos, e somando, aparece o padrão de
+  pesos que dá nome à regra:</p>
+
+  <p>\[ S(h) = \frac{h}{3}\bigl[f_0 + 4f_1 + 2f_2 + 4f_3 + \cdots + 4f_{n-1} + f_n\bigr]. \]</p>
+
+  <p>A expectativa, pela lógica da seção anterior, é que uma regra feita de parábolas seja exata
+  para polinômios de grau até 2 e tenha erro \(O(h^3)\). <strong>Ela é exata até grau 3</strong>,
+  e tem erro \(O(h^4)\).</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O grau que passa de graça</span>
+    <table>
+      <tr><th>\(k\)</th><th>\(\int_0^1 x^k dx\)</th><th>Simpson com \(n=2\)</th><th>erro</th></tr>
+      <tr><td>2</td><td>0,333333333333333</td><td>0,333333333333333</td><td>0</td></tr>
+      <tr><td><strong>3</strong></td><td><strong>0,250000000000000</strong></td><td><strong>0,250000000000000</strong></td><td><strong>0</strong></td></tr>
+      <tr><td>4</td><td>0,200000000000000</td><td>0,208333333333333</td><td>\(8{,}3\times10^{-3}\)</td></tr>
+    </table>
+  </div>
+
+  <p>A razão é de simetria, e vale entendê-la porque o mesmo argumento reaparece na quadratura
+  gaussiana. A diferença entre uma cúbica e a parábola que a interpola em três pontos
+  igualmente espaçados é um polinômio que se anula nesses três pontos, e portanto é proporcional
+  a \((x-x_0)(x-x_1)(x-x_2)\). Em torno do ponto médio \(x_1\), esse produto é uma função
+  <strong>ímpar</strong> de \(s = x - x_1\):</p>
+
+  <p>\[ (s+h)\,s\,(s-h) = s^3 - h^2 s. \]</p>
+
+  <p>Integrando uma função ímpar num intervalo simétrico, o resultado é zero. A contribuição
+  cúbica se cancela entre as duas metades, e o primeiro termo que sobrevive é o de quarta ordem.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">E por isso Simpson 3/8 não ganha nada</span>
+    <p>O mesmo argumento explica por que subir para grau 3 não ajuda. Uma regra de grau
+    <em>ímpar</em> tem um número par de intervalos por grupo e não tem ponto médio, de modo que
+    não há a simetria que produz o cancelamento. Regras de Newton-Cotes de grau par ganham uma
+    ordem de graça; as de grau ímpar não.</p>
+    <p>Em termos práticos: Simpson 3/8 tem a mesma ordem \(O(h^4)\) de Simpson e gasta mais
+    avaliações. Ela existe para o caso em que o número de intervalos não é par.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. Richardson: Simpson sem inventá-lo</h2>
+
+  <p>A expansão do erro do trapézio tem uma estrutura que se pode explorar. Pela fórmula de
+  Euler-Maclaurin, ela contém <em>apenas potências pares</em> de \(h\):</p>
+
+  <p>\[ T(h) = I + c_2h^2 + c_4h^4 + c_6h^6 + \cdots \]</p>
+
+  <p>Calculando com \(h\) e com \(h/2\), há duas equações e o termo dominante pode ser
+  eliminado:</p>
+
+  <p>\[ T(h) = I + c_2h^2, \qquad T(h/2) = I + c_2h^2/4
+     \quad\Longrightarrow\quad
+     I \approx \frac{4T(h/2) - T(h)}{3}. \]</p>
+
+  <p>Essa é a <strong>extrapolação de Richardson</strong>, e ela não custa nenhuma avaliação
+  nova: é aritmética sobre resultados que já se tinha.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">E a combinação é Simpson</span>
+    <table>
+      <tr><th>\(n\)</th><th>\([4T(n)-T(n/2)]/3\)</th><th>Simpson\((n)\)</th><th>diferença</th></tr>
+      <tr><td>8</td><td>2,0002691699480457</td><td>2,0002691699480457</td><td>0</td></tr>
+      <tr><td>32</td><td>2,0000010333694132</td><td>2,0000010333694127</td><td>\(4{,}4\times10^{-16}\)</td></tr>
+      <tr><td>64</td><td>2,0000000645300013</td><td>2,0000000645300004</td><td>\(8{,}9\times10^{-16}\)</td></tr>
+    </table>
+    <p>Iguais em precisão de máquina. <strong>Simpson não precisava ter sido inventado
+    separadamente</strong>: ele é o trapézio extrapolado uma vez.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Romberg</h2>
+
+  <p>Se a extrapolação matou o termo \(h^2\) e sobrou \(h^4\), nada impede repetir o
+  procedimento para matar o \(h^4\), e depois o \(h^6\). Organizando numa tabela triangular, com
+  a primeira coluna de trapézios e cada coluna seguinte extrapolada da anterior:</p>
+
+  <p>\[ R_{i,j} = \frac{4^{j}R_{i,j-1} - R_{i-1,j-1}}{4^{j}-1}. \]</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A tabela para \(\int_0^\pi \sen x\,dx = 2\)</span>
+    <table>
+      <tr><th>\(n\)</th><th>trapézio</th><th>ordem 4</th><th>ordem 6</th><th>ordem 8</th></tr>
+      <tr><td>2</td><td>1,570796326795</td><td>2,094395102393</td><td></td><td></td></tr>
+      <tr><td>4</td><td>1,896118897937</td><td>2,004559754984</td><td>1,998570731824</td><td></td></tr>
+      <tr><td>8</td><td>1,974231601946</td><td>2,000269169948</td><td>1,999983130946</td><td>2,000005549980</td></tr>
+      <tr><td>16</td><td>1,993570343772</td><td>2,000016591048</td><td>1,999999752455</td><td>2,000000016288</td></tr>
+      <tr><td>64</td><td>1,999598388640</td><td>2,000000064530</td><td>1,999999999941</td><td>2,000000000000</td></tr>
+    </table>
+    <p>O melhor valor da tabela erra \(4{,}4\times10^{-16}\) com <strong>65 avaliações</strong>,
+    enquanto a primeira coluna, com as mesmas 65, tem quatro dígitos corretos.</p>
+  </div>
+
+  <p>Vale olhar a tabela por linhas e por colunas. Descer uma linha é refinar a malha, e custa o
+  dobro de avaliações; andar para a direita é extrapolar, e custa apenas uma subtração e uma
+  divisão. A segunda operação é de graça e ganha duas ordens.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Quadratura gaussiana</h2>
+
+  <p>Toda regra desta aula tem a forma \(\int_a^b f \approx \sum_i w_i f(x_i)\). Newton-Cotes
+  fixa os \(x_i\) igualmente espaçados e ajusta só os \(w_i\). Isso dá \(n\) parâmetros livres, e
+  com \(n\) parâmetros dá para acertar polinômios até grau \(n-1\).</p>
+
+  <p>Repare que esse \(n-1\) é da regra <em>simples</em>, aplicada de uma vez só no intervalo
+  inteiro. A regra <em>composta</em> é outra coisa: ela repete uma regra de grau fixo em cada
+  pedaço, de modo que acrescentar pontos encurta \(h\) sem levantar o grau. O trapézio composto é
+  exato até grau 1 com dez pontos ou com dez mil, e Simpson composto até grau 3. É por isso que
+  esses dois têm ordem fixa, 2 e 4, enquanto Gauss melhora de grau a cada nó que ganha.</p>
+
+  <p>Gauss fez a pergunta óbvia que ninguém tinha feito: <strong>e se as posições também forem
+  ajustáveis?</strong> Aí são \(2n\) parâmetros, e deve dar para acertar até grau \(2n-1\).</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A resposta</span>
+    <p>Os \(n\) nós ótimos em \([-1,1]\) são as raízes do polinômio de Legendre \(P_n\), e os
+    pesos valem</p>
+    <p>\[ w_i = \frac{2}{(1-x_i^2)\,[P_n'(x_i)]^2}. \]</p>
+    <p>Com eles, a regra é exata para todo polinômio de grau até \(2n-1\). Para um intervalo
+    qualquer, basta a mudança linear de variável \(x = \tfrac{b-a}{2}t + \tfrac{b+a}{2}\).</p>
+  </div>
+
+  <p>A razão de serem as raízes de Legendre cabe num parágrafo. Escreva um polinômio \(p\) de grau
+  \(\le 2n-1\) como \(p = qP_n + r\), com \(q\) e \(r\) de grau \(\le n-1\). A integral de
+  \(qP_n\) é zero, porque \(P_n\) é ortogonal a todo polinômio de grau menor. Nos nós, \(P_n\) se
+  anula, de modo que a soma só enxerga \(r\). Logo a regra, que é exata para \(r\) por ter \(n\)
+  pesos livres, é exata para \(p\).</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A promessa, conferida com \(n=3\)</span>
+    <table>
+      <tr><th>grau</th><th>\(\int_{-1}^{1}x^k dx\)</th><th>Gauss, 3 nós</th><th>erro</th></tr>
+      <tr><td>4</td><td>0,400000000000000</td><td>0,400000000</td><td>\(2{,}1\times10^{-15}\)</td></tr>
+      <tr><td>5</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td><strong>6</strong></td><td><strong>0,285714285714286</strong></td><td><strong>0,240000000</strong></td><td><strong>\(4{,}6\times10^{-2}\)</strong></td></tr>
+    </table>
+    <p>Exato até grau 5, que é \(2n-1\), e errado no grau 6. A promessa se cumpre exatamente no
+    limite anunciado, nem um grau a mais.</p>
+  </div>
+
+  <div class="bloco ex">
+    <span class="rotulo">A comparação justa: mesmo número de avaliações</span>
+    <table>
+      <tr><th>avaliações</th><th>trapézios</th><th>Simpson</th><th>Gauss</th></tr>
+      <tr><td>3</td><td>\(4{,}3\times10^{-1}\)</td><td>\(9{,}4\times10^{-2}\)</td><td>\(1{,}4\times10^{-3}\)</td></tr>
+      <tr><td>5</td><td>\(1{,}0\times10^{-1}\)</td><td>\(4{,}6\times10^{-3}\)</td><td>\(1{,}1\times10^{-7}\)</td></tr>
+      <tr><td>7</td><td>\(4{,}6\times10^{-2}\)</td><td>\(8{,}6\times10^{-4}\)</td><td>\(1{,}8\times10^{-12}\)</td></tr>
+      <tr><td>9</td><td>\(2{,}6\times10^{-2}\)</td><td>\(2{,}7\times10^{-4}\)</td><td>\(4{,}4\times10^{-16}\)</td></tr>
+      <tr><td>13</td><td>\(1{,}1\times10^{-2}\)</td><td>\(5{,}3\times10^{-5}\)</td><td>\(1{,}1\times10^{-15}\)</td></tr>
+    </table>
+    <p>Com nove avaliações Gauss já está na precisão de máquina e Simpson em \(10^{-4}\). A
+    diferença não é de constante, é de natureza: a coluna de Gauss cai por quatro ordens de
+    grandeza a cada dois pontos, o que é convergência <strong>exponencial</strong>, enquanto as
+    outras caem como potências de \(h\).</p>
+  </div>
+
+  <p>A segunda vista do widget mostra isso num gráfico log-log, onde um erro \(O(h^p)\) é uma reta
+  de inclinação \(-p\). Trapézios e Simpson são retas; Gauss encurva para baixo, que é o que
+  significa cair mais rápido que qualquer potência.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. Onde tudo isso falha</h2>
+
+  <p>Toda a dedução da seção 2 supôs derivadas limitadas. Quando essa hipótese cai, as ordens
+  caem junto, e vale saber reconhecer o sintoma.</p>
+
+  <h3>(a) Derivada infinita na borda</h3>
+
+  <p>Tome \(\int_0^1\sqrt{x}\,dx = 2/3\). A função é contínua, limitada e inocente à vista, mas
+  \(f'(x) = 1/(2\sqrt{x})\) é infinita em \(x=0\).</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">As duas ordens caem para a mesma</span>
+    <table>
+      <tr><th>\(n\)</th><th>erro trapézio</th><th>ordem</th><th>erro Simpson</th><th>ordem</th></tr>
+      <tr><td>64</td><td>\(4{,}0\times10^{-4}\)</td><td>1,485</td><td>\(1{,}6\times10^{-4}\)</td><td>1,500</td></tr>
+      <tr><td>256</td><td>\(5{,}0\times10^{-5}\)</td><td>1,492</td><td>\(2{,}0\times10^{-5}\)</td><td>1,500</td></tr>
+      <tr><td>512</td><td>\(1{,}8\times10^{-5}\)</td><td>1,495</td><td>\(7{,}0\times10^{-6}\)</td><td>1,500</td></tr>
+    </table>
+    <p>As duas convergem com ordem \(3/2\). Simpson deixou de valer a pena: ele gasta o mesmo e
+    entrega a mesma ordem do trapézio, com uma constante um pouco melhor.</p>
+  </div>
+
+  <p>Aumentar a ordem da regra não resolve, porque o problema não está na regra. A saída é
+  <strong>mudar a variável</strong>. Com \(x = u^2\), tem-se \(dx = 2u\,du\) e</p>
+
+  <p>\[ \int_0^1\sqrt{x}\,dx = \int_0^1 u\cdot 2u\,du = \int_0^1 2u^2\,du, \]</p>
+
+  <p>que é polinomial e que Simpson integra exatamente. O programa confirma: com
+  <strong>quatro</strong> intervalos, erro zero, contra 512 intervalos e cinco dígitos na forma
+  original.</p>
+
+  <h3>(b) O caso oposto, em que o trapézio humilha Simpson</h3>
+
+  <p>Agora \(\int_0^{2\pi}\dfrac{dx}{2+\cos x} = \dfrac{2\pi}{\sqrt{3}}\), que é uma função suave
+  e periódica integrada sobre um período inteiro.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A ordem se inverte</span>
+    <table>
+      <tr><th>\(n\)</th><th>erro trapézio</th><th>erro Simpson</th></tr>
+      <tr><td>8</td><td>\(1{,}9\times10^{-4}\)</td><td>\(1{,}2\times10^{-2}\)</td></tr>
+      <tr><td>16</td><td>\(5{,}1\times10^{-9}\)</td><td>\(6{,}4\times10^{-5}\)</td></tr>
+      <tr><td>24</td><td>\(1{,}4\times10^{-13}\)</td><td>\(3{,}3\times10^{-7}\)</td></tr>
+    </table>
+    <p>O trapézio chega a \(10^{-13}\) com 24 pontos, seis ordens de grandeza à frente de
+    Simpson.</p>
+  </div>
+
+  <p>A explicação está na fórmula de Euler-Maclaurin, que escreve o erro do trapézio em função
+  das derivadas <em>nas extremidades</em>:</p>
+
+  <p>\[ T(h) - I = \sum_{k\ge1}\frac{B_{2k}h^{2k}}{(2k)!}
+     \left[f^{(2k-1)}(b) - f^{(2k-1)}(a)\right]. \]</p>
+
+  <p>Numa função periódica integrada sobre um período, \(f^{(m)}(b) = f^{(m)}(a)\) para toda
+  ordem \(m\), e <strong>todos os colchetes se anulam</strong>. A expansão inteira desaparece, e o
+  que sobra cai exponencialmente com \(n\).</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">E Simpson estraga exatamente isso</span>
+    <p>A ponderação alternada \(4,2,4,2,\ldots\) do Simpson <strong>quebra a simetria</strong> que
+    produzia o cancelamento. A regra de ordem mais alta é a pior das duas aqui, e por um motivo
+    estrutural, não por acaso.</p>
+    <p>A lição geral desta seção: não existe regra melhor, existe regra adequada ao integrando.
+    Quem aplica Simpson a tudo erra nos dois casos acima, em direções opostas.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. O piso de arredondamento</h2>
+
+  <p>Refinar a malha reduz o erro de truncamento e aumenta o de arredondamento, porque são mais
+  parcelas somadas. Em algum \(n\) os dois se cruzam, e dali em diante refinar piora o resultado.
+  Essa é a previsão. A medida tem uma surpresa.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Duas maneiras de somar as mesmas parcelas</span>
+    <table>
+      <tr><th>\(n\)</th><th>erro com <code>np.sum</code></th><th>erro com soma sequencial</th></tr>
+      <tr><td>\(1{,}0\times10^{6}\)</td><td>\(1{,}50\times10^{-12}\)</td><td>\(1{,}48\times10^{-12}\)</td></tr>
+      <tr><td>\(4{,}2\times10^{6}\)</td><td>\(9{,}35\times10^{-14}\)</td><td><strong>\(1{,}13\times10^{-13}\)</strong></td></tr>
+      <tr><td>\(8{,}4\times10^{6}\)</td><td>\(2{,}33\times10^{-14}\)</td><td>\(2{,}51\times10^{-13}\)</td></tr>
+      <tr><td>\(1{,}7\times10^{7}\)</td><td>\(5{,}77\times10^{-15}\)</td><td>\(4{,}58\times10^{-13}\)</td></tr>
+    </table>
+    <p>A coluna da soma sequencial tem mínimo em \(n = 4{,}2\times10^{6}\) e <strong>piora
+    depois</strong>, exatamente como a previsão dizia. A coluna do <code>np.sum</code> continuava
+    melhorando quando a varredura acabou.</p>
+  </div>
+
+  <p>O modelo simples prevê o piso da coluna sequencial. O erro de truncamento do trapézio vale
+  \(\pi^3/(12n^2) = 2{,}58/n^2\), e o de arredondamento de uma soma sequencial de \(n\) parcelas
+  cresce como \(\sqrt{n}\,\varepsilon\), supondo erros independentes. Igualando:</p>
+
+  <p>\[ \frac{2{,}58}{n^2} = \sqrt{n}\,\varepsilon
+     \quad\Longrightarrow\quad
+     n_{\text{ót}} = \left(\frac{2{,}58}{\varepsilon}\right)^{2/5} \approx 2{,}0\times10^{6}, \]</p>
+
+  <p>contra \(4{,}2\times10^{6}\) medido: mesma ordem de grandeza, que é tudo o que um modelo com
+  hipótese de independência pode dar.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que o <code>np.sum</code> escapa, e por que isso não deveria importar</span>
+    <p>É a mesma razão da aula 1: o <code>np.sum</code> soma por pares, e o erro dessa soma cresce
+    como \(\sqrt{\log n}\) em vez de \(\sqrt{n}\). Com \(n = 1{,}7\times10^{7}\), \(\sqrt{n}\)
+    vale 4100 e \(\sqrt{\log n}\) vale 4,9: o piso fica quase mil vezes mais baixo, e a varredura
+    não chega nele.</p>
+    <p>A conclusão prática, porém, é outra, e é mais importante que o expoente. <strong>Chegar
+    perto do piso já é sintoma de ter escolhido mal o método.</strong> Para obter \(10^{-13}\) o
+    trapézio precisou de milhões de pontos; Romberg conseguiu \(4\times10^{-16}\) com 65. A saída
+    para o piso de arredondamento não é somar melhor: é subir a ordem e nunca precisar de uma
+    malha tão fina.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/integracao.py">
+      <span class="numero">Programa</span>
+      <h3>integracao.py</h3>
+      <p>Mede as ordens de trapézio e Simpson, verifica que Richardson reproduz Simpson
+      exatamente, constrói Romberg, confere a exatidão de Gauss até grau \(2n-1\), e exibe os dois
+      casos patológicos e o piso de arredondamento.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+  <li>As ordens medidas dão 2,000 e 4,000 em quatro refinamentos sucessivos.</li>
+  <li>Simpson é exato até grau 3 e erra em grau 4, confirmando o cancelamento por simetria.</li>
+  <li>\([4T(n)-T(n/2)]/3\) e Simpson\((n)\) coincidem em precisão de máquina, em cinco valores
+  de \(n\).</li>
+  <li>Romberg chega a \(4{,}4\times10^{-16}\) com 65 avaliações.</li>
+  <li>Gauss com 3 nós é exato até grau 5 e erra em 6; com 9 avaliações, chega a
+  \(4{,}4\times10^{-16}\) em \(\sen x\).</li>
+  <li>Em \(\sqrt{x}\) as duas ordens caem para 1,5, e a troca \(x=u^2\) devolve erro zero com
+  quatro intervalos.</li>
+  <li>No periódico, o trapézio chega a \(1{,}4\times10^{-13}\) com 24 pontos contra
+  \(3{,}3\times10^{-7}\) do Simpson.</li>
+  <li>O piso de arredondamento aparece em \(4{,}2\times10^{6}\) com soma sequencial, e não aparece
+  com <code>np.sum</code>.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Uma previsão que a medida não confirmou de primeira</span>
+    <p>A primeira versão do programa procurava o piso de arredondamento usando <code>np.sum</code>
+    e não o encontrava: o erro caía monotonicamente até \(n = 1{,}7\times10^{7}\), nove vezes
+    além do ótimo previsto. O texto que eu tinha escrito afirmava que o ótimo estava lá e que a
+    ordem de grandeza batia, e nada disso aparecia nos números.</p>
+    <p>A causa era a soma por pares do NumPy, que já tinha sido o assunto da aula 1. Refazendo a
+    medida com acumulação sequencial, o piso apareceu onde devia. O episódio vale como aviso: um
+    modelo de erro que supõe <em>como</em> a soma é feita precisa ser testado com essa soma, e não
+    com a que a biblioteca escolheu.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 4.1 · Quantos intervalos para seis casas</span>
+    <p>Quer-se \(\int_0^1 e^{-x^2}dx\) com erro menor que \(10^{-6}\). Quantos intervalos são
+    necessários pelo trapézio e por Simpson?</p>
+
+    <p><strong>As fórmulas de erro.</strong></p>
+    <p>\[ |E_T| \le \frac{(b-a)h^2}{12}\max|f''|, \qquad
+       |E_S| \le \frac{(b-a)h^4}{180}\max|f^{(4)}|. \]</p>
+
+    <p><strong>As derivadas.</strong> Com \(f = e^{-x^2}\),</p>
+    <p>\[ f'' = (4x^2-2)e^{-x^2}, \qquad f^{(4)} = (16x^4-48x^2+12)e^{-x^2}. \]</p>
+    <p>Em \([0,1]\), \(|f''|\) é máxima em \(x=0\), valendo 2; e \(|f^{(4)}|\) também em \(x=0\),
+    valendo 12.</p>
+
+    <p><strong>Trapézio.</strong></p>
+    <p>\[ \frac{h^2}{12}\cdot2 \le 10^{-6} \;\Rightarrow\; h \le 2{,}45\times10^{-3}
+       \;\Rightarrow\; n \ge 409. \]</p>
+
+    <p><strong>Simpson.</strong></p>
+    <p>\[ \frac{h^4}{180}\cdot12 \le 10^{-6} \;\Rightarrow\; h \le 6{,}22\times10^{-2}
+       \;\Rightarrow\; n \ge 17, \text{ e como } n \text{ é par}, n = 18. \]</p>
+    <p>Conferindo contra a integral exata, o trapézio com 409 intervalos erra
+    \(3{,}7\times10^{-7}\) e Simpson com 18 erra \(7{,}8\times10^{-8}\): os dois cumprem a
+    promessa, e com folga, porque as cotas usaram o máximo das derivadas em todo o intervalo.</p>
+
+    <div class="bloco def">
+      <span class="rotulo">A leitura</span>
+      <p>409 contra 18, para a mesma precisão: a ordem mais alta vale mais que vinte vezes o
+      custo. E a conta vale a pena ser feita <em>antes</em>, porque ela diz quanto vai custar e,
+      quando o número sai grande demais, avisa que é hora de trocar de método em vez de esperar.</p>
+      <p>Para comparar: a quadratura gaussiana resolve esta integral com erro
+      \(7\times10^{-13}\) usando <strong>sete</strong> pontos, e \(7\times10^{-15}\) com
+      oito.</p>
+    </div>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 4.2 · Uma integral imprópria que parece impossível</span>
+    <p>Calcule \(\displaystyle\int_0^\infty \frac{dx}{1+x^4}\), cujo valor exato é
+    \(\dfrac{\pi}{2\sqrt{2}}\). O intervalo é infinito e nenhuma regra desta aula aceita
+    isso.</p>
+
+    <p><strong>A tentação errada.</strong> Truncar em \(x = L\). O erro cometido é a cauda,</p>
+    <p>\[ \int_L^\infty\frac{dx}{1+x^4} \approx \int_L^\infty x^{-4}dx = \frac{1}{3L^3}, \]</p>
+    <p>de modo que \(10^{-10}\) exigiria \(L \approx 1494\). E aí o integrando varia por doze
+    ordens de grandeza dentro do intervalo, e uma malha uniforme desperdiça quase todos os pontos
+    na cauda, onde não há nada.</p>
+
+    <p><strong>A saída: trazer o infinito para perto.</strong> Há mais de uma substituição
+    possível, e elas <em>não</em> são equivalentes. A primeira que ocorre é
+    \(x = t/(1-t)\), que leva \([0,\infty)\) em \([0,1)\) com \(dx = dt/(1-t)^2\):</p>
+    <p>\[ \int_0^\infty\frac{dx}{1+x^4}
+       = \int_0^1 \frac{(1-t)^2\,dt}{(1-t)^4 + t^4}. \]</p>
+    <p>A segunda é \(x = \tg\theta\), com \(dx = \sec^2\theta\,d\theta\), que leva o
+    intervalo em \([0,\pi/2]\):</p>
+    <p>\[ = \int_0^{\pi/2}\frac{\cos^2\theta\,d\theta}{\cos^4\theta + \sen^4\theta}. \]</p>
+    <p>As duas transformam um integrando que morre lentamente numa função limitada e suave num
+    intervalo finito. Medindo as duas com quadratura gaussiana:</p>
+
+    <table>
+      <tr><th>nós</th><th>erro com \(x = t/(1-t)\)</th><th>erro com \(x = \tg\theta\)</th></tr>
+      <tr><td>10</td><td>\(4{,}6\times10^{-4}\)</td><td>\(2{,}9\times10^{-5}\)</td></tr>
+      <tr><td>20</td><td>\(1{,}5\times10^{-7}\)</td><td>\(6{,}5\times10^{-10}\)</td></tr>
+      <tr><td>30</td><td>\(4{,}6\times10^{-11}\)</td><td>\(1{,}6\times10^{-14}\)</td></tr>
+      <tr><td>40</td><td>\(1{,}7\times10^{-14}\)</td><td>piso de arredondamento</td></tr>
+    </table>
+
+    <p>As duas convergem geometricamente, e em ritmos bem diferentes: a cada dez nós, a primeira
+    divide o erro por cerca de 3000 e a segunda por 42000. Daí a vantagem crescente da segunda,
+    16 vezes melhor com 10 nós, 220 com 20 e quase 3000 com 30. Na última linha a comparação
+    acaba, porque a forma com \(\tg\theta\) já encostou no piso de arredondamento e o dígito
+    que ela imprime ali não é reprodutível. Trocar de variável resolveu o problema;
+    <em>qual</em> troca ainda importa.</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">E o trapézio ganha de Gauss, na forma certa</span>
+      <p>Aplicando o <strong>trapézio</strong> à forma com \(\tg\theta\), e contando agora
+      intervalos da malha uniforme:</p>
+      <table>
+        <tr><th>intervalos</th><td>8</td><td>12</td><td>16</td><td>20</td><td>22</td><td>24</td></tr>
+        <tr><th>erro</th>
+            <td>\(1{,}7\cdot10^{-6}\)</td><td>\(1{,}4\cdot10^{-9}\)</td>
+            <td>\(1{,}3\cdot10^{-12}\)</td><td>\(1{,}1\cdot10^{-15}\)</td>
+            <td>\(2{,}2\cdot10^{-16}\)</td><td>\(0\)</td></tr>
+      </table>
+      <p>Cada dois intervalos a mais dividem o erro por 34, sempre pelo mesmo fator, o que é
+      convergência geométrica e não potência de \(h\). Em 22 intervalos o erro já é um único bit
+      do resultado, e o zero exato em 24 é sorte de arredondamento, não um marco. O ponto é a
+      comparação: o trapézio, a regra mais rudimentar da aula, chega aqui ao último bit com 23
+      avaliações, enquanto Gauss, na mesma forma, só assenta no piso de arredondamento com 34.</p>
+      <p>Não é acaso, e é a seção 7 reaparecendo. Pela fórmula de Euler-Maclaurin, o erro do
+      trapézio depende das derivadas de ordem ímpar nas duas extremidades. O integrando
+      \(g(\theta)=\cos^2\theta/(\cos^4\theta+\sen^4\theta)\) é <em>par</em> em torno de
+      \(\theta=0\) e também em torno de \(\theta=\pi/2\), de modo que todas as derivadas
+      ímpares se anulam nas duas pontas. Conferido numericamente: a primeira, a terceira e a
+      quinta derivadas dão zero nos dois extremos, enquanto as pares valem 2,0, \(-8{,}0\) e
+      40,0, o que mostra que o teste discrimina.</p>
+      <p>Todos os colchetes de Euler-Maclaurin se anulam, a expansão inteira desaparece, e a
+      convergência vira exponencial, pelo mesmo mecanismo do integrando periódico da seção 7, aqui
+      obtido de graça por uma simetria que a substituição criou.</p>
+    </div>
+
+    <div class="bloco def">
+      <span class="rotulo">A lição</span>
+      <p>Mudança de variável é a ferramenta mais poderosa desta aula, e a única que resolve os
+      problemas que refinamento de malha não resolve: domou uma derivada infinita na seção 7 e um
+      intervalo infinito aqui, nos dois casos ganhando várias ordens de grandeza.</p>
+      <p>E ela faz mais do que arrumar o domínio. A substituição certa pode <em>criar</em> a
+      simetria que torna um método simples imbatível, como acabou de acontecer. Antes de aumentar
+      \(n\), olhe para o integrando e pergunte que substituição o deixaria parecido com um
+      polinômio, ou simétrico nas bordas.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>4.1</b> Implemente a regra do ponto médio, \(\int \approx h\sum f(x_i + h/2)\), meça
+      a sua ordem e compare a constante do erro com a do trapézio. Mostre que ela é de segunda
+      ordem com constante <em>metade</em> da do trapézio, e explique por que a regra que usa menos
+      informação é a mais precisa das duas.</li>
+
+      <li><b>4.2</b> Reproduza a tabela de Romberg para \(\int_0^1 e^{-x^2}dx\) e diga quantas
+      avaliações foram necessárias para \(10^{-12}\). Compare com o número de intervalos que o
+      exercício resolvido 4.1 previu para o trapézio.</li>
+
+      <li><b>4.3</b> Calcule os nós e pesos de Gauss-Legendre para \(n = 2\) resolvendo o sistema
+      à mão: imponha exatidão para \(1, x, x^2, x^3\) e resolva as quatro equações. Confira que os
+      nós são \(\pm1/\sqrt{3}\) e os pesos são ambos 1.</li>
+
+      <li><b>4.4</b> O período de um pêndulo de amplitude \(\theta_0\) é
+      \(T = 4\sqrt{L/g}\,K(\sen(\theta_0/2))\), com \(K\) a integral elíptica completa
+      \(\int_0^{\pi/2}\frac{d\varphi}{\sqrt{1-k^2\sen^2\varphi}}\). Calcule \(T/T_0\) para
+      \(\theta_0\) de 10° a 179°, e diga o que acontece com a convergência quando \(\theta_0\) se
+      aproxima de 180°. Por quê?</li>
+
+      <li><b>4.5</b> Integre \(\int_0^1 x^{-1/2}\sen x\,dx\), que tem singularidade integrável na
+      origem. Compare: Simpson direto, Simpson depois da troca \(x=u^2\), e a
+      <code>quad</code> do SciPy com o argumento <code>points</code>. Meça as três ordens.</li>
+
+      <li><b>4.6</b> Verifique numericamente a afirmação da seção 7 sobre periódicos: integre
+      \(e^{\cos x}\) de 0 a \(2\pi\) pelo trapézio e faça o gráfico do logaritmo do erro contra
+      \(n\). Mostre que ele é uma reta, e não uma parábola, o que caracteriza convergência
+      exponencial. Depois integre de 0 a \(\pi\), meio período, e mostre que a mágica some.</li>
+
+      <li><b>4.7</b> Implemente uma quadratura adaptativa: divida o intervalo ao meio
+      recursivamente, e pare de dividir onde \(|S(\text{todo}) - S(\text{metades})|\) já for
+      pequeno. Teste em \(\int_0^1 \sen(1/x)\,dx\), e conte quantas avaliações caíram em cada
+      região. Compare com a malha uniforme que daria a mesma precisão.</li>
+
+      <li><b>4.8</b> Em meia página: a aula mostra um caso em que Simpson perde para o trapézio.
+      Isso significa que a análise de ordem da seção 3 estava errada? Responda explicando a
+      diferença entre a ordem assintótica de um método e o seu desempenho num problema
+      específico, e diga que informação sobre o integrando decide a escolha.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="aula03.html"><small>Aula anterior</small>← 3. Interpolação e ajuste</a>
+    <span class="em-breve"><small>Em preparação</small>5. Simbólico e projeto</span>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611220920"></script>
+</body>
+</html>
