@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 1: Sistemas de numeração e conversão de bases | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221013">
+<script src="assets/js/comum.js?v=202611221013"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num ativo" title="Aula 1: Sistemas de numeração e conversão de bases">1</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Dez dedos, dois estados</a></li>
+    <li><a href="#s2">2. Ler um número em qualquer base</a></li>
+    <li><a href="#s3">3. Escrever um número em qualquer base</a></li>
+    <li><a href="#s4">4. A parte fracionária, e onde a conta não termina</a></li>
+    <li><a href="#s5">5. Quando a conversão termina: o critério</a></li>
+    <li><a href="#s6">6. O tamanho do período</a></li>
+    <li><a href="#s7">7. Octal e hexadecimal, que são binário disfarçado</a></li>
+    <li><a href="#s8">8. No Spyder</a></li>
+    <li><a href="#s9">9. Exercícios resolvidos</a></li>
+    <li><a href="#s10">10. Exercícios propostos</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 1 · Como a máquina erra</p>
+  <h1>Sistemas de numeração e conversão de bases</h1>
+  <p class="subtitulo">Digite 0.1 + 0.2 no console e o Python responde 0.30000000000000004. A explicação inteira cabe nesta aula, e ela não tem nada a ver com o Python: 0,1 não existe em binário, pelo mesmo motivo que 1/3 não existe em decimal. O que muda é qual fração tem a má sorte de cair fora da base.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Converter entre bases nos dois sentidos, para a parte inteira e a fracionária;</li>
+      <li>Decidir, <em>antes</em> de converter, se a conversão vai terminar;</li>
+      <li>Prever o tamanho do período quando ela não termina;</li>
+      <li>Explicar por que octal e hexadecimal são atalhos para o binário, e não bases rivais;</li>
+      <li>Dizer quantos dígitos decimais cabem num dado número de bits;</li>
+      <li>Reconhecer o erro de conversão como a primeira das três fontes de erro do curso.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Dez dedos, dois estados</h2>
+
+  <p>A base 10 não tem propriedade matemática nenhuma que a distinga. Ela é um acidente
+  anatômico: contamos em dez porque temos dez dedos, e povos que contaram em vinte, em sessenta
+  ou em doze deixaram rastros que ainda usamos. Os sessenta minutos da hora são babilônicos, e
+  a dúzia sobrevive nos ovos.</p>
+
+  <p>O computador usa base 2 por um motivo de engenharia, não de matemática. Um circuito
+  distingue com folga dois estados, ligado e desligado, e distinguiria dez apenas com
+  dificuldade e sem confiabilidade: bastaria um pouco de ruído para confundir o nível 6 com o
+  7. Com dois níveis bem separados, a margem é enorme, e é por isso que toda a eletrônica
+  digital é binária.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O que um sistema posicional afirma</span>
+    <p>Numa base \(\beta\), a sequência de dígitos \(d_n\ldots d_1 d_0, d_{-1} d_{-2}\ldots\)
+    representa</p>
+    <p>\[ \sum_{i} d_i\,\beta^{i}, \qquad 0 \le d_i < \beta. \]</p>
+    <p>A posição carrega o peso, e é só isso. Um dígito não vale nada por si; vale pela casa em
+    que está. Esse é o avanço sobre a numeração romana, em que XIV e XVI usam os mesmos
+    símbolos e a posição informa por subtração, de maneira irregular.</p>
+  </div>
+
+  <p>Vale ter em mente desde já a pergunta que organiza a aula. A conversão de base é exata
+  para números inteiros, sempre, em qualquer par de bases. Para frações ela pode não terminar,
+  e é dessa possibilidade que nasce o erro de arredondamento, que vai acompanhar todas as
+  outras dez aulas.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. Ler um número em qualquer base</h2>
+
+  <p>Converter <em>para</em> decimal é só aplicar a definição. Cada dígito multiplica a
+  potência da sua casa, e soma-se tudo:</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Três leituras</span>
+    <p>\[ 1011_2 = 1\cdot 2^3 + 0\cdot 2^2 + 1\cdot 2^1 + 1\cdot 2^0 = 8+0+2+1 = 11_{10} \]</p>
+    <p>\[ 202_7 = 2\cdot 7^2 + 0\cdot 7^1 + 2\cdot 7^0 = 98 + 0 + 2 = 100_{10} \]</p>
+    <p>\[ 0{,}101_2 = \frac{1}{2} + \frac{0}{4} + \frac{1}{8} = 0{,}625_{10} \]</p>
+  </div>
+
+  <p>A terceira linha é a que importa para o resto do curso. Depois da vírgula, as potências
+  são negativas, e cada casa vale metade da anterior. Um número binário com \(k\) casas depois
+  da vírgula é necessariamente um múltiplo inteiro de \(2^{-k}\), e isso é uma restrição
+  severa: <strong>os únicos valores representáveis são os dessa grade</strong>, e nenhum
+  outro.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Escrever um número em qualquer base</h2>
+
+  <p>O caminho de volta, de decimal para a base \(\beta\), usa divisões sucessivas para a parte
+  inteira. O algoritmo é mecânico, e convém saber por que funciona, porque a razão também
+  explica o método da parte fracionária.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Divisões sucessivas</span>
+    <p>Divida o número por \(\beta\) e guarde o resto. Divida o quociente por \(\beta\) e guarde
+    o resto. Repita até o quociente zerar, e leia os restos <strong>de baixo para
+    cima</strong>.</p>
+  </div>
+
+  <p>A razão: todo múltiplo de \(\beta\) termina em zero na base \(\beta\), do mesmo modo que
+  todo múltiplo de 10 termina em zero na base 10. Logo o resto da primeira divisão
+  <em>é</em> o último dígito, sem aproximação nenhuma. Repetindo no quociente, extrai-se o
+  próximo, e assim por diante.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">\(100_{10}\) em binário e em base 7</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>base 2</th><th>base 7</th></tr>
+      <tr><td>\(100 \div 2 = 50\), resto <b>0</b></td><td>\(100 \div 7 = 14\), resto <b>2</b></td></tr>
+      <tr><td>\(50 \div 2 = 25\), resto <b>0</b></td><td>\(14 \div 7 = 2\), resto <b>0</b></td></tr>
+      <tr><td>\(25 \div 2 = 12\), resto <b>1</b></td><td>\(2 \div 7 = 0\), resto <b>2</b></td></tr>
+      <tr><td>\(12 \div 2 = 6\), resto <b>0</b></td><td></td></tr>
+      <tr><td>\(6 \div 2 = 3\), resto <b>0</b></td><td></td></tr>
+      <tr><td>\(3 \div 2 = 1\), resto <b>1</b></td><td></td></tr>
+      <tr><td>\(1 \div 2 = 0\), resto <b>1</b></td><td></td></tr>
+      <tr><td>\(1100100_2\)</td><td>\(202_7\)</td></tr>
+    </table>
+    </div>
+    <p>Conferindo a segunda: \(2\cdot 49 + 0\cdot 7 + 2 = 100\). O método é o mesmo nas duas
+    colunas; só o divisor mudou.</p>
+  </div>
+
+  <p>Para inteiros, esse processo sempre termina, porque o quociente cai estritamente a cada
+  passo e não pode cair para sempre. Vale sublinhar: <strong>a conversão de inteiros nunca
+  perde informação</strong>, em base nenhuma. Todo o problema desta aula está na vírgula.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. A parte fracionária, e onde a conta não termina</h2>
+
+  <p>Para a parte depois da vírgula o método se inverte: em vez de dividir e guardar o resto,
+  multiplica-se e guarda-se a parte inteira.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Multiplicações sucessivas</span>
+    <p>Multiplique a fração por \(\beta\). A parte inteira do resultado é o próximo dígito.
+    Repita com a parte fracionária que sobrou, e leia os dígitos <strong>de cima para
+    baixo</strong>.</p>
+  </div>
+
+  <p>Com \(0{,}75\) em binário a conta acaba depressa: \(0{,}75\times 2 = 1{,}5\), dígito 1;
+  \(0{,}5\times 2 = 1{,}0\), dígito 1, e a fração zerou. Logo \(0{,}75_{10} = 0{,}11_2\), e a
+  conferência é imediata, \(1/2 + 1/4 = 0{,}75\).</p>
+
+  <p>Com \(0{,}1\) ela não acaba:</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A conta que volta ao começo</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>fração</th><th>vezes 2</th><th>dígito</th><th>sobra</th></tr>
+      <tr><td>0,1</td><td>0,2</td><td>0</td><td>0,2</td></tr>
+      <tr><td>0,2</td><td>0,4</td><td>0</td><td>0,4</td></tr>
+      <tr><td>0,4</td><td>0,8</td><td>0</td><td>0,8</td></tr>
+      <tr><td>0,8</td><td>1,6</td><td>1</td><td>0,6</td></tr>
+      <tr><td>0,6</td><td>1,2</td><td>1</td><td>0,2</td></tr>
+      <tr><td>0,2</td><td>…</td><td colspan="2"><strong>já apareceu</strong></td></tr>
+    </table>
+    </div>
+    <p>A sobra 0,2 reaparece na sexta linha, e a partir dali tudo se repete exatamente como da
+    primeira vez. Logo</p>
+    <p>\[ 0{,}1_{10} = 0{,}0\overline{0011}_2, \]</p>
+    <p>com o bloco 0011 repetindo para sempre. A máquina guarda 53 bits e corta; o que sobra é
+    um número que não é 0,1, e que nenhuma quantidade de bits tornaria 0,1.</p>
+  </div>
+
+  <p>Esse é o fato bruto por trás do <code>0.30000000000000004</code>. Nem 0,1 nem 0,2 existem
+  em binário, as duas aproximações são arredondadas, e a soma das aproximações não é a
+  aproximação da soma.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que a sobra tem de repetir</span>
+    <p>A conta acima não para por acaso, e dá para provar que ela sempre se repete ou termina.
+    Escreva a fração como \(p/q\) na forma irredutível. Cada passo substitui o resto \(r\) por
+    \(\beta r \bmod q\), e um resto é sempre um inteiro entre 0 e \(q-1\).</p>
+    <p>Como só existem \(q\) valores possíveis, depois de no máximo \(q\) passos ou a conta
+    chegou a zero e terminou, ou algum resto reapareceu. E quando um resto reaparece, toda a
+    sequência de dígitos a partir dali reaparece junto, porque o próximo dígito depende apenas
+    do resto atual. Não há terceira possibilidade.</p>
+    <p>Daí sai, de passagem, um limite: <strong>o período nunca passa de \(q-1\)</strong>. Para
+    \(1/7\) em base 10 ele é exatamente 6, o máximo possível, e por isso 142857 é um número com
+    fama.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. Quando a conversão termina: o critério</h2>
+
+  <p>A pergunta prática é anterior a converter: dá para saber de antemão se a conta vai
+  acabar? Dá, e a resposta é curta.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O critério</span>
+    <p>A fração \(p/q\), já na forma irredutível, tem representação <strong>finita</strong> na
+    base \(\beta\) se e somente se todo fator primo de \(q\) também é fator de \(\beta\).</p>
+  </div>
+
+  <p>A demonstração de ida cabe numa linha. Se a representação é finita com \(k\) casas, então
+  \(p/q = m/\beta^k\) para algum inteiro \(m\), de modo que \(q\) divide \(\beta^k\); e um
+  divisor de \(\beta^k\) só pode ter primos que já estão em \(\beta\). A volta é igualmente
+  direta: se todo primo de \(q\) divide \(\beta\), existe \(k\) com \(q \mid \beta^k\), e então
+  \(p/q = (p\beta^k/q)/\beta^k\) tem numerador inteiro.</p>
+
+  <p>Aplicando:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>fração</th><th>fatores de \(q\)</th><th>base 2</th><th>base 3</th>
+        <th>base 10</th><th>base 16</th></tr>
+    <tr><td>\(1/2\)</td><td>2</td><td>finita</td><td>dízima</td><td>finita</td><td>finita</td></tr>
+    <tr><td>\(1/3\)</td><td>3</td><td>dízima</td><td>finita</td><td>dízima</td><td>dízima</td></tr>
+    <tr><td>\(1/5\)</td><td>5</td><td>dízima</td><td>dízima</td><td>finita</td><td>dízima</td></tr>
+    <tr><td>\(1/10\)</td><td>2, 5</td><td>dízima</td><td>dízima</td><td>finita</td><td>dízima</td></tr>
+    <tr><td>\(15/32\)</td><td>2</td><td>finita</td><td>dízima</td><td>finita</td><td>finita</td></tr>
+    <tr><td>\(1/7\)</td><td>7</td><td>dízima</td><td>dízima</td><td>dízima</td><td>dízima</td></tr>
+  </table>
+  </div>
+
+  <p>Duas leituras valem o esforço. A primeira: \(1/10\) é dízima em binário porque 10 tem o
+  fator 5, e 5 não divide 2. Não há nada de defeituoso no binário.</p>
+
+  <p>A segunda está na linha de \(1/2\): em base 3, <em>meio</em> é dízima periódica, enquanto
+  um terço é finito. Se tivéssemos três dedos, a aula seria sobre por que 0,5 não cabe no
+  computador. O que existe é uma incompatibilidade entre a base em que a pessoa escreve e a
+  base em que a máquina guarda, e não um defeito de uma delas.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A saída usada por quem lida com dinheiro</span>
+    <p>Um sistema bancário não pode errar centavos, e a solução não é usar mais bits: é
+    <strong>mudar de base</strong>. O módulo <code>decimal</code> do Python guarda os números
+    em base 10, com a quantidade de dígitos que se pedir, e ali 0,1 é exato por construção.</p>
+    <p>O preço é a velocidade, porque a aritmética decimal é feita em software e a binária está
+    no processador. Para física isso quase nunca compensa, já que os dados de entrada têm três
+    ou quatro algarismos significativos. Para contabilidade, compensa sempre.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. O tamanho do período</h2>
+
+  <p>Quando a dízima existe, quanto ela demora a se repetir? A resposta é um resultado bonito
+  de aritmética modular, e é testável dígito a dígito.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O período</span>
+    <p>Tire de \(q\) todos os fatores que ele tem em comum com \(\beta\), restando \(q'\). O
+    comprimento do período é a <strong>ordem multiplicativa</strong> de \(\beta\) módulo
+    \(q'\), isto é, o menor \(k \ge 1\) tal que</p>
+    <p>\[ \beta^{k} \equiv 1 \pmod{q'}. \]</p>
+    <p>Os dígitos retirados junto com os fatores comuns formam o <em>pré-período</em>, a parte
+    que aparece uma vez só, antes de a repetição começar.</p>
+  </div>
+
+  <p>Para \(1/10\) em base 2: tirando de 10 o fator 2, sobra \(q' = 5\). As potências de 2
+  módulo 5 são 2, 4, 3, 1, de modo que a ordem é 4, e o período é 4. É exatamente o bloco 0011
+  da seção 4, e o único fator 2 retirado é o responsável pelo único dígito de pré-período.</p>
+
+  <p>O widget abaixo faz essa conta para qualquer \(1/q\) e qualquer das cinco bases, e marca o
+  pré-período e o período na própria expansão.</p>
+
+  <div data-widget="bases"></div>
+
+  <div class="bloco ex">
+    <span class="rotulo">A mesma fração em bases que são potências de 2</span>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>base</th><th>expansão de \(1/10\)</th><th>período</th></tr>
+      <tr><td>2</td><td>\(0{,}0\overline{0011}\)</td><td>4</td></tr>
+      <tr><td>4</td><td>\(0{,}0\overline{12}\)</td><td>2</td></tr>
+      <tr><td>8</td><td>\(0{,}0\overline{6314}\)</td><td>4</td></tr>
+      <tr><td>16</td><td>\(0{,}1\overline{9}\)</td><td>1</td></tr>
+    </table>
+    </div>
+    <p>Em base 16 o período é 1, e a razão é que \(16 \equiv 1 \pmod 5\): a ordem de 1 é
+    trivialmente 1. Como \(16 = 2^4\), um dígito hexadecimal empacota quatro bits, e o bloco
+    binário 1001 cabe inteiro num só dígito hexadecimal, que é o 9.</p>
+    <p>É por isso que o Python, ao mostrar 0,1 em hexadecimal, imprime</p>
+    <p><code>(0.1).hex() == '0x1.999999999999ap-4'</code></p>
+    <p>com uma fila de noves e um <code>a</code> no fim, que é o arredondamento do 54º bit. A
+    fila não é coincidência: é o período da dízima binária, escrito de quatro em quatro.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. Octal e hexadecimal, que são binário disfarçado</h2>
+
+  <p>Octal e hexadecimal não competem com o binário: são maneiras de escrevê-lo sem encher a
+  página. Como \(8 = 2^3\) e \(16 = 2^4\), a conversão entre eles e o binário é um agrupamento,
+  sem conta nenhuma.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">Agrupar de quatro em quatro</span>
+    <p>\[ 3735928559_{10} = \underbrace{1101}_{\text{D}}\,\underbrace{1110}_{\text{E}}\,
+       \underbrace{1010}_{\text{A}}\,\underbrace{1101}_{\text{D}}\,
+       \underbrace{1011}_{\text{B}}\,\underbrace{1110}_{\text{E}}\,
+       \underbrace{1110}_{\text{E}}\,\underbrace{1111}_{\text{F}}\,{}_2
+       = \text{DEADBEEF}_{16} \]</p>
+    <p>Trinta e dois bits viram oito caracteres, e a tradução é local: cada grupo de quatro
+    bits vira um dígito, sem que um grupo influencie o outro. Nenhuma outra base faz isso, e é
+    só por isso que o hexadecimal existe.</p>
+  </div>
+
+  <p>Essa é a razão prática de se ver hexadecimal em toda parte: endereços de memória, cores em
+  CSS, somas de verificação, e a representação interna de um <code>float</code>. A próxima aula
+  vai abrir os 64 bits de um número de ponto flutuante, e ler o expoente e a mantissa em
+  hexadecimal é muito mais rápido do que contar 64 zeros e uns.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Quantos dígitos decimais cabem em \(n\) bits</span>
+    <p>Como \(2^{n}\) valores distintos correspondem a \(10^{n\log_{10}2}\),</p>
+    <p>\[ \text{dígitos decimais} = n\log_{10}2 \approx 0{,}301\,n. \]</p>
+    <p>Os 53 bits de mantissa de um <code>float64</code> valem \(15{,}95\) dígitos decimais,
+    que é a origem dos "cerca de 16 dígitos" que se repete sobre precisão dupla. Os 24 bits de
+    um <code>float32</code> valem \(7{,}22\).</p>
+    <p>Na direção contrária, cada dígito decimal custa \(\log_2 10 = 3{,}32\) bits.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. No Spyder</h2>
+
+  <p>Nenhuma afirmação desta aula precisa ser aceita por autoridade. O programa converte,
+  confere por três rotas independentes, e testa os dois teoremas das seções 5 e 6 contra a
+  conversão de verdade.</p>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/bases.py">
+      <span class="numero">Programa</span>
+      <h3>bases.py</h3>
+      <p>Converte nos dois sentidos entre bases quaisquer, testa o critério de finitude em 48
+      pares de fração e base, confere o período previsto contra o medido, abre os 64 bits de um
+      <code>float</code>, e refaz a conta do erro do míssil Patriot.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>Vinte conversões de inteiros em quatro bases, cada uma conferida pela volta e, quando
+    existe, contra o <code>bin</code>, o <code>oct</code> ou o <code>hex</code> do Python.
+    Nenhuma falha.</li>
+    <li>O critério de finitude acerta nos 48 pares testados, sem uma discordância entre o que
+    ele prevê e o que a conversão faz.</li>
+    <li>O período previsto pela ordem multiplicativa bate com o medido em dez casos, inclusive
+    \(1/11\) em base 2, cujo período é 10.</li>
+    <li>O valor exato de 0,1 em <code>float64</code> é \(3602879701896397/2^{55}\), com erro
+    relativo \(5{,}55\times10^{-17}\), que é metade do épsilon da máquina.</li>
+    <li>Os 64 bits de três números são desmontados e remontados, e a reconstrução devolve o
+    número original exatamente.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">O erro de conversão que custou 28 vidas</span>
+    <p>Em 25 de fevereiro de 1991, em Dhahran, uma bateria Patriot não interceptou um míssil
+    Scud, e 28 militares morreram. O relatório do GAO atribuiu a falha ao relógio interno, que
+    contava décimos de segundo e os convertia em segundos multiplicando por uma aproximação de
+    \(1/10\) guardada num registrador de 24 bits.</p>
+    <p>O programa refaz a conta, e o resultado publicado aparece: truncando a expansão de
+    \(1/10\), o erro é \(9{,}54\times10^{-8}\) por décimo de segundo, o que dá
+    <strong>0,34 s</strong> depois de cem horas ligada. A 1676 m/s, o alvo estava 575 metros
+    adiante da posição calculada, e a janela de interceptação se fechou.</p>
+    <p>A conta trouxe de brinde uma observação que não estava no roteiro: <strong>esse mesmo
+    valor aparece truncando em 21, 22 ou 23 bits</strong>, sem nenhuma diferença. O motivo está
+    na expansão \(0{,}000110011001100110011\underline{00}11\ldots\): os bits 22 e 23 são zeros, e
+    incluí-los não muda nada. Acrescentar bits só compra precisão quando o bit acrescentado vale
+    1, de modo que a precisão de um truncamento não cresce suavemente com o tamanho do
+    registrador. Ela cresce aos saltos, e os saltos dependem do número.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 1.1 · A soma que o contador não fecha</span>
+    <p>Um programa soma <code>0.01</code> dez mil vezes para acumular um total de 100,00. Quanto
+    dá, e de quanto é o erro? Em seguida proponha duas correções, uma que elimina o erro e outra
+    que o reduz.</p>
+
+    <p><strong>Por que erra.</strong> O número 0,01 tem denominador 100, cujos fatores primos
+    são 2 e 5. O 5 não divide 2, logo 0,01 é dízima em binário e a máquina guarda uma
+    aproximação. Pelo critério da seção 5, isso já estava decidido antes de qualquer conta.</p>
+
+    <p><strong>Quanto erra.</strong> O valor guardado é maior que 0,01 em
+    \(2{,}08\times10^{-19}\). Dez mil cópias desse desvio somariam
+    \(2{,}08\times10^{-15}\), e o erro medido é \(1{,}43\times10^{-11}\): quase sete mil
+    vezes maior.</p>
+    <p>A diferença é o ponto do exercício. O erro de <em>representar</em> 0,01 é desprezível; o
+    que domina é o arredondamento de cada uma das dez mil somas parciais, que acontece porque o
+    acumulador vai crescendo e a grade sob ele vai se alargando. Isso é assunto da aula 3, e o
+    número aqui serve para mostrar que a conta ingênua subestima o erro por três ordens de
+    grandeza.</p>
+    <p>Vale notar o que acontece com as alternativas: tanto <code>np.sum</code> quanto
+    <code>math.fsum</code> devolvem exatamente 100,0, cada um por um motivo diferente, e os dois
+    motivos estão na aula 2.</p>
+
+    <p><strong>A correção que elimina.</strong> Contar em centavos, com inteiros, e dividir por
+    100 uma só vez no fim. Inteiros são exatos em qualquer base, e a divisão final arredonda
+    uma vez em vez de dez mil.</p>
+
+    <p><strong>A correção que reduz.</strong> Trocar o acumulador pelo módulo
+    <code>decimal</code>, que trabalha em base 10 e torna 0,01 exato por construção. Resolve o
+    problema e custa cerca de cem vezes mais tempo, o que é irrelevante em dez mil somas e
+    relevante em dez bilhões.</p>
+
+    <p><strong>A que não funciona.</strong> Trocar <code>float64</code> por uma precisão maior.
+    Em 128 bits, 0,01 continua sendo dízima, porque o 5 continua não dividindo o 2. Mais bits
+    empurram o erro para mais longe e não mudam a sua natureza, e esta é a diferença entre
+    adiar um problema e resolvê-lo.</p>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 1.2 · Uma base em que tudo dá certo</span>
+    <p>Existe uma base em que \(1/2\), \(1/3\), \(1/4\) e \(1/6\) são todas finitas? E uma em
+    que \(1/2\), \(1/3\) e \(1/5\) sejam? Generalize.</p>
+
+    <p><strong>O primeiro caso.</strong> Pelo critério da seção 5, a base precisa ser divisível
+    pelos primos que aparecem nos denominadores, que aqui são 2 e 3. A menor base que serve é
+    \(\beta = 6\), e serve também 12, 18, 24, e qualquer múltiplo de 6.</p>
+
+    <p>Conferindo em base 6: \(1/2 = 0{,}3_6\), \(1/3 = 0{,}2_6\), \(1/4 = 0{,}13_6\) e
+    \(1/6 = 0{,}1_6\). Todas finitas, e três delas com um dígito só.</p>
+
+    <p><strong>O segundo caso.</strong> Os primos agora são 2, 3 e 5, e a menor base é
+    \(\beta = 30\). Ela funciona, e com elegância: \(1/2 = 0{,}\mathrm{F}_{30}\),
+    \(1/3 = 0{,}\mathrm{A}_{30}\) e \(1/5 = 0{,}6_{30}\), as três com um dígito só. E
+    ninguém a usa, pelo motivo óbvio de precisar de trinta símbolos distintos.</p>
+
+    <p><strong>A generalização.</strong> Para que um conjunto de frações seja finito numa base,
+    basta que a base seja múltipla do produto dos primos distintos que aparecem nos
+    denominadores. Daí a vantagem antiga da base 12 e da base 60: elas cobrem 2 e 3, e com isso
+    cobrem meio, terço, quarto, sexto, doze avos. A base 10 cobre 2 e 5, e deixa o terço de
+    fora, que é por que \(1/3 = 0{,}333\ldots\) incomoda desde o colégio.</p>
+
+    <div class="bloco alerta">
+      <span class="rotulo">E por que isso não resolve o problema do computador</span>
+      <p>Nenhuma base finita torna <em>todas</em> as frações finitas, porque sempre existe um
+      primo maior que ela. A base 30 falha em \(1/7\), a base 210 falha em \(1/11\), e assim por
+      diante.</p>
+      <p>O ponto é mais geral e vale guardar para a aula 2: qualquer representação com um número
+      finito de dígitos representa um conjunto finito de números, e os reais não são
+      enumeráveis. A escolha da base decide <em>quais</em> números cabem, nunca
+      <em>quantos</em>.</p>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para resolver</span>
+    <ol>
+      <li><b>1.1</b> Converta \(0{,}3_{10}\) para binário à mão, identifique o pré-período e o
+      período, e confira contra a previsão da seção 6. Depois faça o mesmo para \(0{,}7_{10}\) e
+      explique por que os dois têm o mesmo período.</li>
+
+      <li><b>1.2</b> Escreva uma função que receba um inteiro e uma base de 2 a 36 e devolva a
+      representação, e outra que faça o caminho de volta. Teste as duas uma contra a outra em
+      mil pares aleatórios, e contra o <code>int(s, base)</code> do Python.</li>
+
+      <li><b>1.3</b> Para cada \(q\) de 2 a 50, calcule o período de \(1/q\) em base 2 pela
+      ordem multiplicativa e pela expansão, e verifique que coincidem. Faça o gráfico do período
+      contra \(q\) e explique por que os pontos mais altos caem todos em valores primos.</li>
+
+      <li><b>1.4</b> O período de \(1/q\) em base 10 atinge o máximo \(q-1\) para
+      \(q = 7, 17, 19, 23\), e não para \(q = 11\) (período 2) nem \(q = 13\) (período 6).
+      Descubra numericamente quais primos até 100 têm período máximo, procure como eles são
+      chamados, e verifique se a lista muda quando a base passa de 10 para 2.</li>
+
+      <li><b>1.5</b> Some <code>0.1</code> dez vezes e compare com <code>1.0</code>. Depois
+      repita a soma em base 10 com o módulo <code>decimal</code>, e com a classe
+      <code>Fraction</code>. Meça o tempo das três e diga em que situação cada uma vale a
+      pena.</li>
+
+      <li><b>1.6</b> Um sensor de 12 bits mede tensões de 0 a 5 V. Qual é o menor degrau de
+      tensão que ele distingue? Quantos dígitos decimais fazem sentido no relatório? Se o
+      programa imprimir seis casas, o que está acontecendo?</li>
+
+      <li><b>1.7</b> Reproduza a conta do Patriot para truncamentos de 16 a 32 bits e faça o
+      gráfico da deriva em cem horas contra o número de bits. Explique os patamares que
+      aparecem, e diga como eles se relacionam com a expansão binária de \(1/10\).</li>
+
+      <li><b>1.8</b> Em meia página: um colega propõe resolver o problema de \(0{,}1+0{,}2\)
+      arredondando todo resultado para dez casas decimais antes de usá-lo. Diga por que isso não
+      resolve, e construa um exemplo numérico em que a correção piora o resultado.</li>
+    </ol>
+  </div>
+
+  <nav class="nav-aulas">
+    <a href="index.html"><small>Voltar</small>← Início</a>
+    <a class="prox" href="aula02.html"><small>Próxima aula</small>2. Ponto flutuante →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611221013"></script>
+</body>
+</html>

@@ -1161,6 +1161,173 @@
     registrarRedesenho(desenhar);
   };
 
+  /* ------------------------------------------------------------------
+     A expansao de 1/q numa base, com o periodo marcado. Tudo em
+     aritmetica de inteiros: o resto vive em 0..q-1, de modo que a
+     deteccao de periodo e exata e nao depende de tolerancia nenhuma.
+     ------------------------------------------------------------------ */
+  REGISTRO.bases = function (raiz) {
+    var corpo = moldura(raiz, 'A expansão de 1/q, e onde ela se repete');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    var q = 10, base = 2;
+    var SIM = '0123456789ABCDEF';
+
+    function mdc(a, b) { while (b) { var t = a % b; a = b; b = t; } return a; }
+
+    /* ordem multiplicativa de base modulo q, tirados os fatores comuns */
+    function previsto(q, base) {
+      var m = q, g;
+      while ((g = mdc(m, base)) > 1) m /= g;
+      if (m === 1) return 0;
+      var k = 1, r = base % m;
+      while (r !== 1) { r = (r * base) % m; k++; }
+      return k;
+    }
+
+    /* expansao de 1/q: devolve digitos, inicio do periodo e tamanho */
+    function expandir(q, base, maximo) {
+      var r = 1, d = [], onde = {}, i;
+      for (i = 0; i < maximo; i++) {
+        if (r === 0) return { d: d, ini: -1, per: 0 };
+        if (onde[r] !== undefined) return { d: d, ini: onde[r], per: i - onde[r] };
+        onde[r] = i;
+        var y = r * base;
+        d.push(Math.floor(y / q));
+        r = y % q;
+      }
+      return { d: d, ini: -1, per: -1 };
+    }
+
+    /* a expansao sem parar no periodo: expandir() devolve so ate o primeiro
+       resto repetido, e para DESENHAR e preciso ver a repeticao acontecer */
+    function brutos(q, base, n) {
+      var r = 1, d = [], i;
+      for (i = 0; i < n; i++) {
+        var y = r * base;
+        d.push(Math.floor(y / q));
+        r = y % q;
+      }
+      return d;
+    }
+
+    opcoes(corpo, [{ rot: 'base 2', v: 2 }, { rot: 'base 3', v: 3 },
+                   { rot: 'base 8', v: 8 }, { rot: 'base 10', v: 10 },
+                   { rot: 'base 16', v: 16 }], 2,
+      function (v) { base = v; desenhar(); });
+
+    deslizante(corpo, 'A fração é 1/q, com q =', 2, 40, 1, 10,
+      function (v) { q = v; desenhar(); });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'a expansão', k: 'a' },
+      { rot: 'período previsto', k: 'b' },
+      { rot: 'período medido', k: 'c' },
+      { rot: 'antes de repetir', k: 'd' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var r = expandir(q, base, 120);
+      var p = G.preparar(cv, Math.min(150, Math.max(118, cv.clientWidth * 0.15)));
+      var ct = p.ct, L = p.L, A = p.A;
+      ct.save();
+      ct.clearRect(0, 0, L, A);
+
+      /* quantos digitos mostrar: o pre-periodo mais tres periodos */
+      var mostrarN = r.ini < 0 ? r.d.length
+                   : Math.min(r.ini + 3 * r.per, 48);
+      var dig = brutos(q, base, mostrarN);
+
+      var esq = 16, cima = 58;
+      var larg = Math.min(26, Math.max(13, (L - 2 * esq - 30) / mostrarN));
+      var alt = 26;
+
+      rotulo(ct, '1/' + q + ' na base ' + base + ' =', esq, 14,
+             G.COR.tinta, 'left', 'middle', '600 13px system-ui, sans-serif');
+      rotulo(ct, '0,', esq + 2, cima + alt / 2, G.COR.tinta, 'left', 'middle',
+             '600 15px system-ui, sans-serif');
+
+      var x0 = esq + 18;
+      dig.forEach(function (d, i) {
+        var x = x0 + i * larg;
+        var dentro = r.ini >= 0 && i >= r.ini;
+        var qual = dentro ? Math.floor((i - r.ini) / r.per) : -1;
+        ct.fillStyle = !dentro ? '#eef0f3'
+                     : (qual % 2 === 0 ? 'rgba(140,47,57,0.14)'
+                                       : 'rgba(140,47,57,0.07)');
+        ct.fillRect(x, cima, larg - 1.5, alt);
+        rotulo(ct, SIM[d], x + (larg - 1.5) / 2, cima + alt / 2,
+               dentro ? G.COR.vinho : G.COR.tinta, 'center', 'middle',
+               '600 13px system-ui, sans-serif');
+      });
+      if (r.ini < 0) {
+        rotulo(ct, 'fim', x0 + dig.length * larg + 6, cima + alt / 2,
+               G.COR.verde, 'left', 'middle',
+               '600 12px system-ui, sans-serif');
+      } else {
+        rotulo(ct, '…', x0 + mostrarN * larg + 4, cima + alt / 2,
+               G.COR.suave, 'left', 'middle', '600 15px system-ui, sans-serif');
+        /* a chave sob o primeiro periodo */
+        var xa = x0 + r.ini * larg, xb = x0 + (r.ini + r.per) * larg - 1.5;
+        ct.strokeStyle = G.COR.vinho; ct.lineWidth = 1.4;
+        ct.beginPath();
+        ct.moveTo(xa, cima + alt + 5); ct.lineTo(xa, cima + alt + 10);
+        ct.lineTo(xb, cima + alt + 10); ct.lineTo(xb, cima + alt + 5);
+        ct.stroke();
+        rotulo(ct, 'período ' + r.per, (xa + xb) / 2, cima + alt + 24,
+               G.COR.vinho, 'center', 'middle',
+               '600 12px system-ui, sans-serif');
+        if (r.ini > 0) {
+          var xc = x0, xd = x0 + r.ini * larg - 1.5;
+          ct.strokeStyle = G.COR.suave;
+          ct.beginPath();
+          ct.moveTo(xc, cima - 5); ct.lineTo(xc, cima - 10);
+          ct.lineTo(xd, cima - 10); ct.lineTo(xd, cima - 5);
+          ct.stroke();
+          rotulo(ct, r.ini === 1 ? 'pré-período' : 'pré-período ' + r.ini,
+                 (xc + xd) / 2, cima - 19, G.COR.suave, 'center', 'middle',
+                 '600 12px system-ui, sans-serif');
+        }
+      }
+      ct.restore();
+
+      var prev = previsto(q, base);
+      mostrar({
+        a: r.ini < 0 ? 'finita' : 'dízima',
+        b: prev === 0 ? '—' : String(prev),
+        c: r.ini < 0 ? '—' : String(r.per),
+        d: r.ini < 0 ? String(r.d.length) + ' dígitos' : String(r.ini)
+      });
+
+      var q2 = q, g;
+      while ((g = (function (a, b) { while (b) { var t = a % b; a = b; b = t; }
+                                     return a; })(q2, base)) > 1) q2 /= g;
+
+      saida.innerHTML = r.ini < 0
+        ? 'Todo fator primo de ' + q + ' divide ' + base + ', e por isso a conta '
+          + 'termina: são ' + r.d.length + ' dígitos e acabou. Repare que isso '
+          + 'depende das duas coisas ao mesmo tempo, a fração <em>e</em> a base. '
+          + 'Mude a base e a mesma fração pode virar dízima.'
+        : 'Tirando de ' + q + ' os fatores que ele tem em comum com ' + base
+          + ', sobra ' + q2 + '. O período é a <strong>ordem multiplicativa</strong> '
+          + 'de ' + base + ' módulo ' + q2 + ', isto é, o menor \\(k\\) com '
+          + '\\(' + base + '^k \\equiv 1 \\pmod{' + q2 + '}\\), e vale ' + prev
+          + '. A régua mede ' + r.per + '. '
+          + (r.ini === 0 ? 'A repetição começa no primeiro dígito, porque não '
+                         + 'havia fator comum a retirar.'
+             : (r.ini === 1 ? 'O dígito antes da chave é o pré-período, e vem '
+                            : 'Os ' + r.ini + ' dígitos antes da chave são o '
+                              + 'pré-período, e vêm ')
+               + 'do fator que foi retirado de ' + q + '.');
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {
