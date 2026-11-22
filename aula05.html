@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 5: Matemática simbólica e projeto integrador | Métodos Numéricos</title>
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
+<script src="assets/js/comum.js?v=202611220937"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-interno">
+    <a class="marca" href="index.html">Métodos Numéricos <span>· LFCA/URCA</span></a>
+    <nav class="menu">
+      <a href="index.html">Início</a>
+      <span class="grupo">Erro</span>
+      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
+      <span class="grupo">Métodos</span>
+      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
+      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
+      <a href="aula04.html" class="num" title="Aula 4: Integração numérica">4</a>
+      <span class="grupo">Fechamento</span>
+      <a href="aula05.html" class="num ativo" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+    </nav>
+  </div>
+</header>
+
+<div class="envoltorio">
+
+<aside class="lateral">
+  <h4>Nesta aula</h4>
+  <ol>
+    <li><a href="#s1">1. Dois mundos</a></li>
+    <li><a href="#s2">2. SymPy em dez minutos</a></li>
+    <li><a href="#s3">3. As fórmulas deste curso, derivadas pelo computador</a></li>
+    <li><a href="#s4">4. Simplificar não é inocente</a></li>
+    <li><a href="#s5">5. lambdify, e quanto custa a ponte</a></li>
+    <li><a href="#s6">6. Onde o simbólico desiste</a></li>
+    <li><a href="#s7">7. O projeto: o pêndulo de amplitude grande</a></li>
+    <li><a href="#s8">8. No Spyder</a></li>
+    <li><a href="#s9">9. Exercícios resolvidos</a></li>
+    <li><a href="#s10">10. Exercícios propostos</a></li>
+    <li><a href="#s11">11. O que este curso tentou ensinar</a></li>
+  </ol>
+</aside>
+
+<main class="conteudo">
+
+  <p class="chapeu">Aula 5 · Fechamento</p>
+  <h1>Matemática simbólica e projeto integrador</h1>
+  <p class="subtitulo">Álgebra simbólica e cálculo numérico resolvem problemas diferentes, e a combinação útil não é escolher um dos dois. É usar o simbólico para preparar a conta e para conferir a resposta, e o numérico para obtê-la. O projeto desta aula mostra as quatro aulas anteriores trabalhando juntas num problema só, que é como elas sempre aparecem fora da sala.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Objetivos</span>
+    <ul>
+      <li>Usar o SymPy para derivar, integrar, expandir em série e resolver em símbolos;</li>
+      <li>Obter as fórmulas de erro das aulas 3 e 4 sem aceitá-las de cabeça;</li>
+      <li>Reconhecer que simplificar uma expressão pode arruiná-la numericamente;</li>
+      <li>Atravessar do simbólico para o numérico com <code>lambdify</code>, e saber o custo;</li>
+      <li>Identificar os três tipos de problema em que o simbólico não tem resposta;</li>
+      <li>Resolver um problema completo em que as quatro aulas anteriores são necessárias.</li>
+    </ul>
+  </div>
+
+  <hr class="linha">
+
+  <!-- ================================================== -->
+  <h2 id="s1">1. Dois mundos</h2>
+
+  <p>Até aqui, tudo neste curso foi numérico. Toda quantidade que apareceu era um
+  <code>float64</code>, com os 53 bits de mantissa da aula 1, e todo método produzia uma sequência
+  de números que se esperava convergir para a resposta. É assim que o computador resolve a maior
+  parte dos problemas de física, e é por isso que o curso começou por aí.</p>
+
+  <p>Existe uma segunda maneira de o computador fazer matemática, e ela não substitui a primeira.
+  Um sistema de álgebra simbólica manipula <em>expressões</em>, e não números. Quando você pede
+  a derivada de \(\sen(x^2)\), ele não avalia nada: ele aplica a regra da cadeia e devolve a
+  expressão \(2x\cos(x^2)\), que é a resposta exata, válida para todo \(x\), e que não tem erro
+  de arredondamento nenhum porque não houve arredondamento.</p>
+
+  <p>A pergunta natural, e que todo aluno faz nesta altura, é por que então estudamos métodos
+  numéricos. A resposta tem três partes, e as três aparecem nesta aula.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Por que o simbólico não resolve tudo</span>
+    <ol>
+      <li><strong>Para a maioria dos problemas não existe fórmula.</strong> Não é que o programa
+      seja fraco: está demonstrado que a fórmula não existe. A equação \(x^5-x-1=0\) não tem
+      solução por radicais, e \(\int e^{-x^2}/(1+x^3)\,dx\) não tem primitiva elementar.</li>
+      <li><strong>Quando existe, às vezes não ajuda.</strong> A resposta de
+      \(\int_0^1 e^{-x^2}dx\) é \(\sqrt{\pi}\,\mathrm{erf}(1)/2\), o que é correto e inútil
+      sozinho: para ter um número, alguém ainda precisa avaliar \(\mathrm{erf}\),
+      numericamente.</li>
+      <li><strong>Quando existe e ajuda, pode ser lenta ou instável.</strong> A fórmula exata
+      pode ser catastroficamente imprecisa em ponto flutuante, e a seção 7 traz um caso em que a
+      derivada simbólica exata é pior que uma série truncada em três termos.</li>
+    </ol>
+  </div>
+
+  <p>O que o simbólico faz bem é outra coisa, e é valiosa. Ele deriva sem errar sinal, expande
+  em série sem errar coeficiente, e fornece o valor exato contra o qual o método numérico pode
+  ser conferido. Todo programa deste curso foi escrito com uma seção de verificação, e em vários
+  deles a referência de comparação veio de uma conta simbólica. É esse o papel dele aqui:
+  <strong>preparar e conferir</strong>.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s2">2. SymPy em dez minutos</h2>
+
+  <p>O SymPy vem com o Anaconda e não precisa de instalação. A diferença de tudo que viemos
+  fazendo está na primeira linha: antes de qualquer coisa, declaram-se os símbolos.</p>
+
+  <pre><code>import sympy as sp
+
+x, y = sp.symbols('x y')
+n = sp.symbols('n', integer=True, positive=True)</code></pre>
+
+  <p>A partir daí, uma expressão em <code>x</code> é um objeto do SymPy, e não um número. As
+  operações mais usadas são poucas:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>o que se quer</th><th>como se pede</th><th>o que volta</th></tr>
+    <tr><td>derivar</td><td><code>sp.diff(f, x)</code></td><td>expressão</td></tr>
+    <tr><td>derivar \(k\) vezes</td><td><code>sp.diff(f, x, k)</code></td><td>expressão</td></tr>
+    <tr><td>integrar</td><td><code>sp.integrate(f, x)</code></td><td>expressão, ou a integral intacta</td></tr>
+    <tr><td>integral definida</td><td><code>sp.integrate(f, (x, a, b))</code></td><td>expressão</td></tr>
+    <tr><td>série de Taylor</td><td><code>sp.series(f, x, 0, 6)</code></td><td>expressão com \(O(x^6)\)</td></tr>
+    <tr><td>resolver</td><td><code>sp.solve(eq, x)</code></td><td>lista de soluções</td></tr>
+    <tr><td>limite</td><td><code>sp.limit(f, x, 0)</code></td><td>expressão</td></tr>
+    <tr><td>substituir</td><td><code>f.subs(x, 2)</code></td><td>expressão</td></tr>
+    <tr><td>virar número</td><td><code>float(f)</code> ou <code>f.evalf(30)</code></td><td>número</td></tr>
+    <tr><td>virar função NumPy</td><td><code>sp.lambdify(x, f, 'numpy')</code></td><td>função</td></tr>
+  </table>
+  </div>
+
+  <div class="bloco alerta">
+    <span class="rotulo">Os três erros de quem está começando</span>
+    <p><strong>Escrever <code>1/3</code> no meio de uma expressão simbólica.</strong> O Python
+    avalia isso como <code>0.3333333333333333</code> antes de o SymPy ver, e a exatidão se
+    perdeu na primeira linha. O certo é <code>sp.Rational(1,3)</code> ou
+    <code>sp.S(1)/3</code>.</p>
+    <p><strong>Usar <code>math.sin</code> em vez de <code>sp.sin</code>.</strong> O primeiro
+    exige um número e falha com um símbolo; e se o argumento por acaso for numérico, ele devolve
+    um <code>float</code>, contaminando a expressão inteira.</p>
+    <p><strong>Chamar <code>subs</code> dentro de um laço.</strong> Funciona, e é a maneira mais
+    lenta possível de avaliar uma função. A seção 5 mede o quanto.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. As fórmulas deste curso, derivadas pelo computador</h2>
+
+  <p>Nas aulas 3 e 4, várias fórmulas de erro foram apresentadas como resultado de uma expansão
+  de Taylor que eu fiz na lousa e você aceitou. Vale refazê-las aqui, porque a conta tem três
+  linhas e porque o resultado contém uma surpresa que só se enxerga bem quando o computador a
+  produz.</p>
+
+  <p>A ideia é escrever a série de Taylor com coeficientes simbólicos \(f_0, f_1, f_2, \ldots\)
+  no lugar das derivadas, aplicar a regra de integração a essa série, integrar a série de
+  verdade, e subtrair:</p>
+
+  <pre><code>u, h = sp.symbols('u h')
+taylor = sum(sp.Symbol('f_%d' % j) * u**j / sp.factorial(j) for j in range(7))
+
+erro_trapezio = sp.expand(h/2 * (taylor.subs(u,0) + taylor.subs(u,h))
+                          - sp.integrate(taylor, (u, 0, h)))
+erro_simpson  = sp.expand(h/3 * (taylor.subs(u,0) + 4*taylor.subs(u,h)
+                                 + taylor.subs(u,2*h))
+                          - sp.integrate(taylor, (u, 0, 2*h)))</code></pre>
+
+  <p>O que sai:</p>
+
+  <p>\[ \text{trapézio: } \frac{f_2h^3}{12} + \frac{f_3h^4}{24} + \frac{f_4h^5}{80}
+     + \frac{f_5h^6}{360} + \frac{f_6h^7}{2016} \]</p>
+  <p>\[ \text{Simpson: } \frac{f_4h^5}{90} + \frac{f_5h^6}{90} + \frac{23f_6h^7}{3780} \]</p>
+
+  <p>A primeira linha confirma o \(h^3f''/12\) por painel da aula 4, que composto dá \(h^2\). A
+  segunda confirma o \(h^5f^{(4)}/90\), que composto dá \(h^4\). Nenhuma das duas foi digitada:
+  elas saíram da subtração.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">O grau que passa de graça, visto como uma ausência</span>
+    <p>O mais interessante na segunda linha é o que não está lá. A série de Simpson começa em
+    \(h^5\): os coeficientes de \(h^3\) e de \(h^4\) são <strong>zero</strong>, e o programa os
+    imprime como zero em vez de afirmar que são.</p>
+    <p>Na seção 3 da aula 4, esse cancelamento foi argumentado por simetria, e o argumento
+    estava certo. Mas há uma diferença entre demonstrar que um termo se cancela e ver que ele
+    não aparece. Aqui ele não aparece: a conta foi feita sem nenhuma hipótese sobre simetria, e
+    o termo em \(h^4\) simplesmente sobrou com coeficiente nulo.</p>
+  </div>
+
+  <p>A mesma receita resolve a derivada numérica, que este curso só usou de passagem, quando a
+  aula 2 conferiu a derivada analítica de Newton contra uma diferença central. Trocando a regra
+  de integração pela fórmula de diferenças:</p>
+
+  <p>\[ \frac{f(h)-f(0)}{h} - f_1 = \frac{f_2h}{2} + \frac{f_3h^2}{6}
+     + \frac{f_4h^3}{24} + \cdots \]</p>
+  <p>\[ \frac{f(h)-f(-h)}{2h} - f_1 = \frac{f_3h^2}{6} + \frac{f_5h^4}{120} \]</p>
+
+  <p>A progressiva começa em \(h\) e a central em \(h^2\), e a central só tem potências pares.
+  É o mesmo cancelamento por simetria de Simpson, reaparecendo na derivada: trocar \(h\) por
+  \(-h\) inverte o sinal da fórmula central, e um termo de potência ímpar de \(h\) não
+  sobreviveria a essa troca.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">Mas a diferença central não é melhor sempre</span>
+    <p>Essas séries descrevem só o erro de truncamento. O erro total da derivada numérica tem
+    uma segunda parte, de arredondamento, que <em>cresce</em> quando \(h\) diminui, porque
+    \(f(h)-f(-h)\) é uma subtração de números próximos, dividida por um número pequeno. É a
+    aula 1 outra vez, e o \(h\) ótimo da diferença central fica perto de
+    \(\varepsilon^{1/3}\approx 6\times10^{-6}\), não no menor \(h\) que a máquina aceita.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. Simplificar não é inocente</h2>
+
+  <p>O SymPy tem um arsenal de funções que reescrevem uma expressão: <code>expand</code>,
+  <code>factor</code>, <code>simplify</code>, <code>together</code>, <code>cancel</code>,
+  <code>trigsimp</code>. Todas preservam o valor matemático da expressão, e é fácil concluir daí
+  que a escolha entre as formas é questão de gosto. Não é.</p>
+
+  <p>Tome \((x-1)^8\) e expanda:</p>
+
+  <p>\[ (x-1)^8 = x^8 - 8x^7 + 28x^6 - 56x^5 + 70x^4 - 56x^3 + 28x^2 - 8x + 1. \]</p>
+
+  <p>As duas formas são a mesma função, e o próprio SymPy certifica isso:
+  <code>simplify(fatorada - expandida)</code> devolve <code>0</code>. Avaliando as duas em
+  <code>float64</code> perto de \(x=1\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(x\)</th><th>forma fatorada</th><th>forma expandida</th><th>erro relativo</th></tr>
+    <tr><td>1,01</td><td>\(1{,}0\times10^{-16}\)</td><td>\(-1{,}2\times10^{-14}\)</td>
+        <td>\(1{,}3\times10^{2}\)</td></tr>
+    <tr><td>1,001</td><td>\(1{,}0\times10^{-24}\)</td><td>\(-1{,}1\times10^{-14}\)</td>
+        <td>\(1{,}1\times10^{10}\)</td></tr>
+    <tr><td>1,0001</td><td>\(1{,}0\times10^{-32}\)</td><td>\(-1{,}8\times10^{-15}\)</td>
+        <td>\(1{,}8\times10^{17}\)</td></tr>
+  </table>
+  </div>
+
+  <p>A coluna da direita não erra o último dígito. Ela erra o <strong>sinal</strong>, e erra
+  dezessete ordens de grandeza. A razão é a de sempre: a forma expandida soma e subtrai parcelas
+  da ordem de 1 para produzir um resultado da ordem de \(10^{-32}\), e nenhuma soma de
+  <code>float64</code> sabe produzir \(10^{-32}\) a partir de números da ordem de 1. Essa é a
+  aula 1 inteira num exemplo de uma linha.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">A regra prática</span>
+    <p><code>expand</code>, <code>simplify</code> e companhia são operações <em>algébricas</em>,
+    e a álgebra não sabe que existe aritmética de precisão finita. Depois de simplificar, confira
+    numericamente perto dos pontos onde a expressão é pequena, que é onde a diferença aparece.</p>
+    <p>E quando as duas formas discordarem, confie na que <strong>não</strong> subtrai: produto,
+    forma fatorada, forma de Horner. Foi isso que a aula 2 fez ao reescrever a fórmula de
+    Bhaskara, e é a mesma decisão aqui.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s5">5. lambdify, e quanto custa a ponte</h2>
+
+  <p>Obtida a expressão simbólica, falta avaliá-la em muitos pontos, que é o que um gráfico, um
+  ajuste ou uma integração numérica precisam. A maneira errada de fazer isso é a mais óbvia:</p>
+
+  <pre><code>for v in X:                      # NÃO faça isto
+    y.append(float(expr.subs(x, v)))</code></pre>
+
+  <p>A maneira certa é pedir ao SymPy que escreva uma função Python:</p>
+
+  <pre><code>f = sp.lambdify(x, expr, 'numpy')
+Y = f(X)                         # X é um array inteiro</code></pre>
+
+  <p>A diferença medida, com 200 mil pontos de
+  \(\sen x\,e^{-x^2/2}+\sqrt{1+x^2}\):</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>rota</th><th>tempo</th></tr>
+    <tr><td><code>subs</code> + <code>float</code>, ponto a ponto</td><td>97 s</td></tr>
+    <tr><td><code>lambdify</code> + NumPy</td><td>0,0044 s</td></tr>
+    <tr><td>NumPy escrito à mão</td><td>0,0023 s</td></tr>
+  </table>
+  </div>
+
+  <p>São quatro ordens de grandeza entre a primeira linha e a segunda. Os tempos absolutos
+  dependem da máquina; a razão entre eles, muito pouco.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">E o resultado é o mesmo bit</span>
+    <p>A dúvida que sempre vem a seguir é se <code>lambdify</code> entrega uma versão
+    aproximada ou mais lenta do NumPy. Não entrega: o teste do programa compara os dois arrays
+    com <code>np.array_equal</code>, que é igualdade exata e não tolerância, e eles são iguais.</p>
+    <p>O motivo é simples quando se olha o que <code>lambdify</code> faz. Ela não interpreta a
+    expressão a cada chamada; ela gera o código-fonte da função NumPy que você escreveria, chama
+    <code>exec</code> uma vez, e sai do caminho. Quem avalia depois é o NumPy, sozinho.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. Onde o simbólico desiste</h2>
+
+  <p>Três situações, e o que fazer em cada uma.</p>
+
+  <p><strong>(a) A equação que não tem fórmula.</strong> Peça
+  <code>sp.solve(x**5 - x - 1, x)</code> e o SymPy devolve cinco objetos <code>CRootOf</code>,
+  que significam "a \(k\)-ésima raiz deste polinômio", e não uma expressão. Isso não é fraqueza
+  do programa: Abel e Ruffini demonstraram que a fórmula por radicais não existe para a quíntica
+  geral, e esta é uma delas. A saída é a aula 2, e Newton leva poucos passos até
+  \(x = 1{,}167303978261\), com resíduo \(7\times10^{-16}\).</p>
+
+  <p><strong>(b) A integral que existe e não ajuda.</strong>
+  \(\int_0^1 e^{-x^2}dx = \sqrt{\pi}\,\mathrm{erf}(1)/2\). O SymPy resolveu, e a resposta está
+  correta. Só que \(\mathrm{erf}\) é definida <em>por</em> essa integral, de modo que o
+  simbólico não resolveu o problema: ele deu um nome ao problema. Para chegar a
+  \(0{,}746824132812427\) alguém ainda avalia \(\mathrm{erf}\) numericamente, por uma
+  aproximação de Chebyshev ou por uma série, que são a aula 3 e a aula 4 outra vez.</p>
+
+  <p><strong>(c) A integral que não existe em forma fechada.</strong>
+  \(\int_0^1 \frac{e^{-x^2}}{1+x^3}dx\) não tem primitiva elementar, e o SymPy devolve a
+  integral intacta. A quadratura gaussiana com 20 nós dá \(0{,}655856363173858\), e o
+  <code>evalf</code> de alta precisão do próprio SymPy dá o mesmo número. Duas rotas
+  independentes, nenhuma fórmula.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que isso é tranquilizador, e não frustrante</span>
+    <p>Um aluno pode ler esta seção como uma lista de derrotas. Vale ler ao contrário. Se
+    existisse fórmula fechada para tudo, métodos numéricos seriam uma curiosidade histórica e a
+    física computacional não existiria.</p>
+    <p>O que a seção mostra é que os problemas sem fórmula são a regra e não a exceção, e que
+    para eles existe um conjunto de ferramentas confiáveis, com erro estimável e verificação
+    independente. É disso que o curso tratou.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s7">7. O projeto: o pêndulo de amplitude grande</h2>
+
+  <p>O exercício 4.4 pediu o período de um pêndulo de amplitude grande e parou aí. Agora o
+  problema vai até o fim, e serve de projeto integrador porque nele as quatro aulas anteriores
+  aparecem de uma vez, cada uma num lugar em que é indispensável.</p>
+
+  <p>Um pêndulo simples de comprimento \(L\), solto do repouso com amplitude \(\theta_0\),
+  obedece a \(\ddot\theta = -(g/L)\sen\theta\). A aproximação \(\sen\theta\approx\theta\) dá o
+  período familiar \(T_0 = 2\pi\sqrt{L/g}\), independente da amplitude. Sem a aproximação, a
+  conservação de energia dá</p>
+
+  <p>\[ T = 2\sqrt{\frac{2L}{g}}\int_0^{\theta_0}
+        \frac{d\theta}{\sqrt{\cos\theta - \cos\theta_0}}, \]</p>
+
+  <p>e o denominador se anula na extremidade superior, onde o pêndulo para. A integral converge,
+  mas o integrando vai a infinito como \(1/\sqrt{\theta_0-\theta}\).</p>
+
+  <div data-widget="pendulo"></div>
+
+  <h3>Aula 4: a integral, e a substituição que decide tudo</h3>
+
+  <p>Aplicada diretamente, a integral acima é exatamente o caso patológico da seção 7 da aula 4,
+  agora com consequência física. Quem não percebe a singularidade descarta o último ponto da
+  malha e segue. O resultado:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(n\)</th><th>valor obtido</th><th>erro</th><th>razão de erros</th></tr>
+    <tr><td>32</td><td>0,93955745</td><td>\(1{,}27\times10^{-1}\)</td><td></td></tr>
+    <tr><td>128</td><td>1,00297989</td><td>\(6{,}34\times10^{-2}\)</td><td>2,001</td></tr>
+    <tr><td>512</td><td>1,03466131</td><td>\(3{,}17\times10^{-2}\)</td><td>2,000</td></tr>
+    <tr><td>2048</td><td>1,05049831</td><td>\(1{,}58\times10^{-2}\)</td><td>2,000</td></tr>
+  </table>
+  </div>
+
+  <p>O erro cai pela metade quando \(n\) quadruplica, ou seja, como \(n^{-1/2}\). Para ganhar um
+  dígito decimal são cem vezes mais pontos, e para os dezesseis dígitos de um
+  <code>float64</code> não haveria memória no mundo.</p>
+
+  <p>A substituição que resolve isso é a de Legendre,
+  \(\sen(\theta/2)=k\sen\varphi\) com \(k=\sen(\theta_0/2)\). Ela leva a integral para
+  \([0,\pi/2]\) e deixa o integrando limitado:</p>
+
+  <p>\[ \frac{T}{T_0} = \frac{2}{\pi}\int_0^{\pi/2}
+        \frac{d\varphi}{\sqrt{1-k^2\sen^2\varphi}} = \frac{2}{\pi}K(k^2), \]</p>
+
+  <p>com \(K\) a integral elíptica completa de primeira espécie. Agora o trapézio simples:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(\theta_0\)</th><th>graus</th><th>\(n=8\)</th><th>\(n=16\)</th>
+        <th>\(n=32\)</th><th>\(n=64\)</th></tr>
+    <tr><td>0,50</td><td>28,6</td><td>0</td><td>0</td>
+        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
+    <tr><td>1,00</td><td>57,3</td><td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td>
+        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
+    <tr><td>2,00</td><td>114,6</td><td>\(1{,}5\cdot10^{-9}\)</td><td>\(2\cdot10^{-16}\)</td>
+        <td>0</td><td>\(4\cdot10^{-16}\)</td></tr>
+    <tr><td>2,50</td><td>143,2</td><td>\(1{,}4\cdot10^{-5}\)</td><td>\(3{,}0\cdot10^{-10}\)</td>
+        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
+    <tr><td>3,00</td><td>171,9</td><td>\(1{,}1\cdot10^{-1}\)</td><td>\(7{,}9\cdot10^{-3}\)</td>
+        <td>\(6{,}0\cdot10^{-5}\)</td><td>\(4{,}9\cdot10^{-9}\)</td></tr>
+    <tr><td>3,10</td><td>177,6</td><td>\(1{,}5\)</td><td>\(4{,}2\cdot10^{-1}\)</td>
+        <td>\(6{,}9\cdot10^{-2}\)</td><td>\(3{,}3\cdot10^{-3}\)</td></tr>
+  </table>
+  </div>
+
+  <p>Até cerca de 115°, oito intervalos já põem o resultado no último bit. É o mecanismo de
+  Euler-Maclaurin da seção 7 da aula 4 pela terceira vez: o integrando é par nas duas
+  extremidades, todas as derivadas de ordem ímpar se anulam lá, e a convergência vira
+  geométrica. Oito pontos na forma certa valem mais que dois mil na forma errada.</p>
+
+  <p>A última linha mostra onde a mágica acaba. Quando \(\theta_0\to180°\), \(k\to1\) e o
+  integrando quase estoura em \(\varphi=\pi/2\): a função volta a ter uma quase-singularidade na
+  borda, e a convergência volta a ser lenta. Isso tem sentido físico, e é o melhor tipo de
+  limitação numérica, a que a física anuncia de antemão. Na posição invertida o pêndulo não
+  retorna, e o período diverge.</p>
+
+  <h3>Aula 1: o cancelamento quando a amplitude é pequena</h3>
+
+  <p>A pergunta útil no laboratório raramente é \(T\), e sim <em>quanto</em> o período se afasta
+  do valor ideal. Isso pede \(T/T_0 - 1\), que é a subtração de dois números próximos de 1.</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(\theta_0\)</th><th>\((2/\pi)K - 1\)</th><th>pela série</th>
+        <th>erro relativo</th></tr>
+    <tr><td>\(10^{-2}\)</td><td>\(6{,}2500358076\times10^{-6}\)</td>
+        <td>\(6{,}2500358075\times10^{-6}\)</td><td>\(6\times10^{-12}\)</td></tr>
+    <tr><td>\(10^{-4}\)</td><td>\(6{,}2499982967\times10^{-10}\)</td>
+        <td>\(6{,}2500000036\times10^{-10}\)</td><td>\(3\times10^{-7}\)</td></tr>
+    <tr><td>\(10^{-6}\)</td><td>\(6{,}2394533984\times10^{-14}\)</td>
+        <td>\(6{,}2500000000\times10^{-14}\)</td><td>\(2\times10^{-3}\)</td></tr>
+    <tr><td>\(10^{-7}\)</td><td>\(6{,}6613381478\times10^{-16}\)</td>
+        <td>\(6{,}2500000000\times10^{-16}\)</td><td>\(7\times10^{-2}\)</td></tr>
+    <tr><td>\(10^{-8}\)</td><td>\(0\)</td>
+        <td>\(6{,}2500000000\times10^{-18}\)</td><td>1</td></tr>
+  </table>
+  </div>
+
+  <p>Em \(\theta_0=10^{-8}\) a subtração devolve zero, e a resposta certa é
+  \(6{,}25\times10^{-18}\). Não há nada de errado com a função elíptica: o erro está em pedir a
+  diferença de dois números que coincidem nos dezesseis dígitos disponíveis. A série
+  \(\theta_0^2/16 + 11\theta_0^4/3072+\cdots\), que o SymPy fornece, não subtrai nada e por isso
+  acerta todos os dígitos.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">A fórmula exata é pior que a série truncada</span>
+    <p>O mesmo acontece com a derivada \(dR/d\theta_0\), e aqui o resultado é francamente
+    contraintuitivo. A derivada simbólica exata que o SymPy produz contém o fator
+    \(E(k) - \cos^2(\theta_0/2)\,K(k)\). Esses dois termos coincidem em treze dígitos quando
+    \(\theta_0=10^{-6}\), de modo que a diferença perde treze dígitos de precisão. A fórmula
+    exata devolve \(1{,}251\times10^{-7}\) onde a resposta é \(1{,}250\times10^{-7}\), um erro
+    relativo de \(8\times10^{-4}\); em \(\theta_0=10^{-8}\) ela devolve zero.</p>
+    <p>A série truncada em três termos acerta nos dois casos. Exata em álgebra e exata em
+    <code>float64</code> são propriedades diferentes, e esta é a demonstração mais limpa disso
+    que o curso encontrou.</p>
+  </div>
+
+  <h3>Aula 2: inverter a relação</h3>
+
+  <p>No laboratório mede-se o período e quer-se a amplitude, que é a pergunta inversa:
+  resolver \(R(\theta_0)=\) valor medido. É uma raiz, e Newton serve, com a derivada que a seção
+  anterior obteve do SymPy.</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(T/T_0\) medido</th><th>\(\theta_0\) (rad)</th><th>graus</th>
+        <th>passos</th><th>volta pelo trapézio</th></tr>
+    <tr><td>1,05</td><td>0,874480558183</td><td>50,104045</td><td>5</td>
+        <td>1,050000000000</td></tr>
+    <tr><td>1,20</td><td>1,640930736511</td><td>94,018406</td><td>7</td>
+        <td>1,200000000000</td></tr>
+    <tr><td>2,00</td><td>2,788231124107</td><td>159,753876</td><td>9</td>
+        <td>2,000000000000</td></tr>
+  </table>
+  </div>
+
+  <p>A última coluna é a verificação que importa, e não usa o SymPy: ela refaz a integral pelo
+  trapézio na forma de Legendre, que é um caminho inteiramente diferente. As duas rotas fecham
+  no último bit nos três casos.</p>
+
+  <h3>Aula 3: a tabela de consulta</h3>
+
+  <p>Cada avaliação de \(K\) custa uma média aritmético-geométrica, e um ajuste de dados com
+  milhares de chamadas paga isso milhares de vezes. Compensa interpolar uma vez e consultar
+  depois. Erro máximo em 1001 alvos de \([0,3]\) rad:</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>\(n\)</th><th>nós igualmente espaçados</th><th>nós de Chebyshev</th>
+        <th>ganho</th></tr>
+    <tr><td>9</td><td>\(2{,}5\times10^{-2}\)</td><td>\(1{,}1\times10^{-2}\)</td><td>2×</td></tr>
+    <tr><td>13</td><td>\(6{,}9\times10^{-3}\)</td><td>\(1{,}5\times10^{-3}\)</td><td>5×</td></tr>
+    <tr><td>17</td><td>\(2{,}2\times10^{-3}\)</td><td>\(2{,}1\times10^{-4}\)</td><td>11×</td></tr>
+    <tr><td>21</td><td>\(7{,}4\times10^{-4}\)</td><td>\(3{,}0\times10^{-5}\)</td><td>24×</td></tr>
+    <tr><td>25</td><td>\(2{,}7\times10^{-4}\)</td><td>\(4{,}6\times10^{-6}\)</td><td>58×</td></tr>
+  </table>
+  </div>
+
+  <p>Chebyshev ganha, e o ganho cresce com \(n\), que é a assinatura da aula 3. Vale reparar
+  também no que <em>não</em> acontece: nenhuma das duas colunas despenca como no exemplo de
+  Runge, e com 25 nós a melhor delas ainda está em \(10^{-6}\).</p>
+
+  <p>A razão é física. A função \(T/T_0\) tem uma singularidade logarítmica em
+  \(\theta_0=\pi\), que está a apenas 0,14 rad do fim do intervalo. A aula 3 mostrou que o erro
+  de interpolação tem um fator \(f^{(n+1)}/(n+1)!\), e perto de uma singularidade as derivadas
+  sucessivas crescem rápido demais para o fatorial segurar. Isso se mede: basta afastar o fim do
+  intervalo de \(\pi\) e ver o que acontece com os mesmos nós de Chebyshev.</p>
+
+  <div class="tabela-rolavel">
+  <table>
+    <tr><th>intervalo</th><th>distância até \(\pi\)</th><th>\(n=9\)</th><th>\(n=13\)</th>
+        <th>\(n=17\)</th><th>\(n=21\)</th></tr>
+    <tr><td>\([0,\,3]\)</td><td>0,14</td><td>\(1{,}1\cdot10^{-2}\)</td>
+        <td>\(1{,}5\cdot10^{-3}\)</td><td>\(2{,}1\cdot10^{-4}\)</td>
+        <td>\(3{,}0\cdot10^{-5}\)</td></tr>
+    <tr><td>\([0;\,2{,}5]\)</td><td>0,64</td><td>\(4{,}5\cdot10^{-5}\)</td>
+        <td>\(6{,}5\cdot10^{-7}\)</td><td>\(1{,}0\cdot10^{-8}\)</td>
+        <td>\(1{,}7\cdot10^{-10}\)</td></tr>
+    <tr><td>\([0,\,2]\)</td><td>1,14</td><td>\(7{,}9\cdot10^{-7}\)</td>
+        <td>\(2{,}1\cdot10^{-9}\)</td><td>\(6{,}1\cdot10^{-12}\)</td>
+        <td>\(1{,}9\cdot10^{-14}\)</td></tr>
+    <tr><td>\([0,\,1]\)</td><td>2,14</td><td>\(1{,}1\cdot10^{-10}\)</td>
+        <td>\(6{,}7\cdot10^{-15}\)</td><td>no último bit</td>
+        <td>no último bit</td></tr>
+  </table>
+  </div>
+
+  <p>Nada mudou no método, na função ou no número de nós: mudou só a distância entre a
+  singularidade e o intervalo, e cada radião de afastamento comprou cerca de cinco ordens de
+  grandeza. Em \([0,3]\) o erro cai por um fator 7 a cada quatro nós; em \([0,1]\), por um fator
+  de dezesseis mil. Para chegar perto de 180° sem pagar isso, o caminho é mudar de variável e
+  interpolar em \(\log(\pi-\theta_0)\), onde a singularidade se desdobra. É o exercício 5.5.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">O que o projeto mostrou</span>
+    <p>Uma pergunta de física de primeiro período, quanto vale o período de um pêndulo, consumiu
+    as quatro aulas anteriores e mais esta:</p>
+    <ul>
+      <li><strong>Aula 4</strong> para calcular a integral, onde a substituição decide entre
+      oito pontos e dois mil;</li>
+      <li><strong>Aula 1</strong> para descobrir que \(T/T_0-1\) não se obtém por subtração
+      quando a amplitude é pequena, e que a fórmula exata é a pior rota;</li>
+      <li><strong>Aula 2</strong> para inverter a relação e responder à pergunta que o
+      laboratório realmente faz;</li>
+      <li><strong>Aula 3</strong> para transformar a resposta cara numa tabela barata, e para
+      saber por que ela converge devagar;</li>
+      <li><strong>Aula 5</strong> para obter a série, a derivada e o valor de referência sem
+      erro algébrico de ninguém.</li>
+    </ul>
+    <p>Nenhuma delas resolveria o problema sozinha, e em todos os pontos em que o método falhou
+    foi a física que disse onde ele falharia.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s8">8. No Spyder</h2>
+
+  <div class="cartoes">
+    <a class="cartao" href="codigo/simbolico.py">
+      <span class="numero">Programa</span>
+      <h3>simbolico.py</h3>
+      <p>Deriva as fórmulas de erro das aulas 3 e 4, mede o estrago de simplificar, cronometra a
+      ponte <code>lambdify</code>, exibe os três lugares onde o simbólico desiste, e resolve o
+      projeto do pêndulo inteiro, com verificação independente em cada etapa.</p>
+    </a>
+  </div>
+
+  <p><strong>O que ele imprime, e o que conferir.</strong></p>
+
+  <ul>
+    <li>A série do trapézio começa em \(f_2h^3/12\) e a de Simpson em \(f_4h^5/90\), com os
+    coeficientes de \(h^3\) e \(h^4\) impressos como zero.</li>
+    <li>A diferença progressiva começa em \(h\) e a central em \(h^2\), com só potências pares.</li>
+    <li><code>simplify</code> da diferença entre as duas formas de \((x-1)^8\) dá exatamente 0,
+    e mesmo assim os valores diferem em dezessete ordens de grandeza.</li>
+    <li><code>lambdify</code> é cerca de 20 mil vezes mais rápida que <code>subs</code>, e bate
+    com NumPy escrito à mão por <code>np.array_equal</code>, que é igualdade exata.</li>
+    <li>Newton na quíntica dá 1,167303978261 com resíduo \(7\times10^{-16}\), e bate com
+    <code>nroots</code> do SymPy em doze dígitos.</li>
+    <li>Gauss com 20 nós e o <code>evalf</code> de 20 dígitos concordam na integral sem
+    primitiva, com diferença nula.</li>
+    <li>O trapézio na forma de Legendre com 8 intervalos bate o ingênuo com 512 em todas as
+    amplitudes testadas até 115°.</li>
+    <li>A inversão por Newton fecha pela volta do trapézio em \(2\times10^{-16}\) nos três
+    alvos.</li>
+    <li>Nenhum valor do pêndulo depende da própria rotina que o calcula: a referência é a
+    <code>ellipk</code> do SciPy.</li>
+  </ul>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que o programa confere tudo duas vezes</span>
+    <p>Este é o último programa do curso, e vale dizer explicitamente o que todos eles vêm
+    fazendo. Nenhum número impresso aqui depende apenas da rotina que o produziu. O período sai
+    da <code>ellipk</code> do SciPy e do trapézio escrito à mão; a raiz da quíntica sai de Newton
+    e do <code>nroots</code>; a integral sem primitiva sai de Gauss e do <code>evalf</code>; as
+    fórmulas de erro saem da série simbólica e batem com as ordens medidas na aula 4.</p>
+    <p>Isso não é zelo excessivo. Um método numérico errado quase nunca avisa: ele imprime um
+    número com dezesseis dígitos, todos errados, com a mesma confiança com que imprimiria a
+    resposta certa. A única defesa é a segunda rota.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s9">9. Exercícios resolvidos</h2>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 5.1 · A ordem de Simpson 3/8, sem lousa</span>
+    <p>A regra de Simpson 3/8 usa três intervalos e um polinômio cúbico:
+    \(\frac{3h}{8}[f_0+3f_1+3f_2+f_3]\). Usando a mesma receita da seção 3, obtenha sua série de
+    erro e decida se ela ganha alguma coisa sobre Simpson 1/3.</p>
+
+    <p><strong>Montagem.</strong> Basta trocar a combinação linear:</p>
+    <pre><code>erro_38 = sp.expand(3*h/8*(taylor.subs(u,0) + 3*taylor.subs(u,h)
+                           + 3*taylor.subs(u,2*h) + taylor.subs(u,3*h))
+                    - sp.integrate(taylor, (u, 0, 3*h)))</code></pre>
+
+    <p><strong>O que sai.</strong></p>
+    <p>\[ \frac{3f_4h^5}{80} + \frac{9f_5h^6}{160} + \frac{53f_6h^7}{1120}. \]</p>
+
+    <p><strong>Leitura.</strong> O termo dominante é \(3h^5/80\), também de quinta ordem, exatamente
+    como Simpson 1/3. Três intervalos e um polinômio de grau 3 não compraram ordem nenhuma.</p>
+
+    <p>A comparação justa é por intervalo coberto. Para cobrir uma largura \(H\), Simpson 1/3
+    usa \(H/(2h)\) painéis de erro \(h^5/90\) cada, e 3/8 usa \(H/(3h)\) painéis de erro
+    \(3h^5/80\) cada:</p>
+    <p>\[ \text{1/3: } \frac{H}{2}\cdot\frac{h^4}{90} = \frac{Hh^4}{180}, \qquad
+       \text{3/8: } \frac{H}{3}\cdot\frac{3h^4}{80} = \frac{Hh^4}{80}. \]</p>
+    <p>A regra 3/8 erra \(180/80 = 2{,}25\) vezes mais, com o mesmo \(h\) e mais avaliações.
+    É a confirmação, agora por conta e não por argumento, do que a seção 3 da aula 4 afirmou:
+    regras de Newton-Cotes de grau par ganham uma ordem de graça, e as de grau ímpar não ganham
+    nada. A 3/8 existe por conveniência, quando o número de intervalos não é par.</p>
+  </div>
+
+  <div class="bloco exe">
+    <span class="rotulo">Exercício resolvido 5.2 · Uma simplificação que custa seis dígitos</span>
+    <p>A energia de um oscilador amortecido ao fim de um ciclo envolve o fator
+    \(1-e^{-2\gamma T}\). Para amortecimento fraco, \(\gamma T\) é pequeno. Compare a forma
+    direta com a forma que o SymPy produz ao expandir, e diga qual usar.</p>
+
+    <p><strong>O problema.</strong> Em \(\gamma T = 10^{-9}\), a forma direta
+    <code>1 - np.exp(-2*g*T)</code> subtrai de 1 um número que vale
+    \(0{,}999999998\ldots\), e o resultado, \(2\times10^{-9}\), fica com apenas sete dígitos
+    corretos: a subtração descartou os dígitos que importavam antes de eles poderem ser usados.</p>
+
+    <p><strong>O que o SymPy oferece.</strong></p>
+    <pre><code>g, T = sp.symbols('gamma T', positive=True)
+sp.series(1 - sp.exp(-2*g*T), g*T, 0, 4)</code></pre>
+    <p>\[ 1-e^{-2\gamma T} = 2\gamma T - 2(\gamma T)^2 + \frac{4(\gamma T)^3}{3} + O((\gamma T)^4). \]</p>
+
+    <p><strong>A resposta prática.</strong> Nenhuma das duas, e sim a função que já existe para
+    isso: <code>np.expm1(-2*g*T)</code>, com o sinal trocado, que calcula \(e^x-1\) sem a
+    subtração e devolve os dezesseis dígitos. Em \(\gamma T = 10^{-9}\):</p>
+    <div class="tabela-rolavel">
+    <table>
+      <tr><th>rota</th><th>valor</th><th>dígitos corretos</th></tr>
+      <tr><td><code>1 - np.exp(-2*g*T)</code></td><td>\(2{,}0000000545\times10^{-9}\)</td>
+          <td>\(\sim 7\)</td></tr>
+      <tr><td>série até \((\gamma T)^3\)</td><td>\(1{,}9999999980\times10^{-9}\)</td>
+          <td>16</td></tr>
+      <tr><td><code>-np.expm1(-2*g*T)</code></td><td>\(1{,}9999999980\times10^{-9}\)</td>
+          <td>16</td></tr>
+    </table>
+    </div>
+
+    <p><strong>A moral.</strong> O simbólico foi útil aqui, e não como fornecedor da resposta
+    final: ele mostrou que a expressão é \(2\gamma T\) vezes algo próximo de 1, o que revelou o
+    cancelamento. Diagnosticado o cancelamento, a correção veio de uma função de biblioteca que
+    existe exatamente para esse caso. Esse costuma ser o fluxo real: o simbólico explica, a
+    biblioteca resolve.</p>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s10">10. Exercícios propostos</h2>
+
+  <div class="bloco def">
+    <span class="rotulo">Para entregar</span>
+    <ol>
+      <li><b>5.1</b> Use a receita da seção 3 para obter a série de erro da regra do ponto médio,
+      \(h\,f(h/2)\). Mostre que ela é de mesma ordem que o trapézio e que o coeficiente é
+      <em>metade</em> do dele, com sinal oposto. Em seguida explique, a partir desses dois
+      coeficientes, por que \((2M+T)/3\) é exatamente Simpson.</li>
+
+      <li><b>5.2</b> Obtenha com o SymPy a série de erro da diferença central de segunda derivada,
+      \([f(h)-2f(0)+f(-h)]/h^2\). Depois meça numericamente o erro total em
+      \(f=e^x\) para \(h\) de \(10^{-1}\) a \(10^{-9}\), faça o gráfico log-log e localize o
+      \(h\) ótimo. Compare com a previsão \(h^\ast \approx \varepsilon^{1/4}\).</li>
+
+      <li><b>5.3</b> Repita a demonstração da seção 4 com \(\sen(x)-x\) perto da origem: compare
+      a avaliação direta com a série de Taylor de três termos, e localize o \(x\) abaixo do qual
+      a forma direta perde mais da metade dos dígitos. Explique o número que encontrar.</li>
+
+      <li><b>5.4</b> O período do pêndulo perto de 180°. Mostre com o SymPy que
+      \(K(k^2)\sim\ln\frac{4}{\sqrt{1-k^2}}\) quando \(k\to1\), e use isso para construir uma
+      aproximação de \(T/T_0\) válida entre 175° e 179,99°. Compare com o valor exato e com o
+      que a série de potências da seção 7 daria.</li>
+
+      <li><b>5.5</b> Refaça a tabela de consulta da seção 7 interpolando em
+      \(s=\log(\pi-\theta_0)\) em vez de em \(\theta_0\), no intervalo de 90° a 179,9°. Meça o
+      erro máximo com 9, 13 e 17 nós, e diga se a mudança de variável recuperou a convergência
+      rápida.</li>
+
+      <li><b>5.6</b> Um projeto alternativo: o lançamento com resistência do ar proporcional a
+      \(v^2\). A equação não tem solução fechada. Obtenha a solução de pequena resistência por
+      série com o SymPy, resolva numericamente o problema completo, e use uma raiz para achar o
+      ângulo de alcance máximo. Diga onde cada aula do curso entrou.</li>
+
+      <li><b>5.7</b> Em uma página: escolha um dos programas deste curso, leia a seção de
+      verificação dele, e proponha <em>uma</em> verificação a mais que o autor não fez. Diga que
+      erro ela pegaria e por que as verificações existentes não pegariam.</li>
+    </ol>
+  </div>
+
+  <!-- ================================================== -->
+  <h2 id="s11">11. O que este curso tentou ensinar</h2>
+
+  <p>As cinco aulas cobriram ponto flutuante, raízes, interpolação, integração e álgebra
+  simbólica, e esse é o conteúdo que a ementa pede. Não é, porém, o que eu gostaria que ficasse.
+  O que fica, se alguma coisa ficar, são três hábitos.</p>
+
+  <p><strong>Conferir por uma segunda rota.</strong> Um método numérico errado não avisa; ele
+  devolve dezesseis dígitos, todos errados, com a mesma cara de quem devolveria a resposta certa.
+  Toda afirmação numérica deste curso foi conferida contra uma forma fechada, contra um método
+  independente, ou contra o comportamento assintótico previsto. Várias vezes a conferência
+  reprovou o que eu tinha escrito, e essas vezes estão registradas nas páginas, porque são a
+  parte mais instrutiva.</p>
+
+  <p><strong>Olhar para o problema antes de aumentar \(n\).</strong> As maiores vitórias deste
+  curso não vieram de malhas mais finas. Vieram de uma mudança de variável que removeu uma
+  singularidade, de nós colocados onde o erro mandava, de uma expressão reescrita para não
+  subtrair. Refinar é a última ferramenta, não a primeira, e em vários dos casos aqui refinar
+  piorava o resultado.</p>
+
+  <p><strong>Saber onde o método vai falhar antes de ele falhar.</strong> Em todos os casos
+  patológicos deste curso, havia um aviso prévio: uma derivada infinita, uma singularidade perto
+  do intervalo, dois números que coincidem nos primeiros dígitos, uma matriz mal condicionada.
+  Quem conhece a física do problema enxerga esses avisos antes de rodar o programa, e essa é a
+  vantagem real de um físico sobre uma biblioteca.</p>
+
+  <p>Os cinco programas ficam aqui, e eles foram escritos para serem lidos e modificados, não só
+  executados. Mude um parâmetro e veja o que quebra: é assim que se aprende onde estão as
+  bordas.</p>
+
+  <nav class="nav-aulas">
+    <a href="aula04.html"><small>Aula anterior</small>← 4. Integração</a>
+    <a class="prox" href="index.html"><small>Voltar</small>Página inicial →</a>
+  </nav>
+
+</main>
+</div>
+
+<footer class="rodape">
+  <img class="logo-rodape" src="assets/img/logo-lfca.png" alt="LFCA | URCA">
+  <p><strong>Prof. Apiano Morais</strong> · <a href="mailto:apiano.morais@urca.br">apiano.morais@urca.br</a><br>
+  Laboratório de Física Computacional Aplicada (LFCA) · Universidade Regional do Cariri</p>
+  <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
+</footer>
+
+<script src="assets/js/widgets.js?v=202611220937"></script>
+</body>
+</html>

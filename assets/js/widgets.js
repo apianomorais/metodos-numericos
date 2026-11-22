@@ -921,6 +921,246 @@
   };
 
 
+  /* ------------------------------------------------------------------
+     O pendulo de amplitude grande: o projeto da aula 5. Duas vistas.
+     A primeira mostra onde cada truncamento da serie deixa de valer; a
+     segunda mostra por que a substituicao de Legendre e indispensavel.
+     ------------------------------------------------------------------ */
+  REGISTRO.pendulo = function (raiz) {
+    var corpo = moldura(raiz, 'O período do pêndulo de amplitude grande');
+    var cv = el('canvas');
+    corpo.appendChild(cv);
+
+    /* o grau inicial do deslizante e a amplitude tem de sair do MESMO
+       numero, ou a ficha mostra 69 graus e calcula 68,75 */
+    var GRAUS0 = 60;
+    var vista = 0, grau = 2, t0 = GRAUS0 * Math.PI / 180;
+
+    /* K(m) pela media aritmetico-geometrica: seis iteracoes bastam para
+       o ultimo bit, e o resultado bate com ellipk do SciPy em 14 digitos */
+    function ellipk(m) {
+      var a = 1, b = Math.sqrt(1 - m), i, an, bn;
+      for (i = 0; i < 60; i++) {
+        an = (a + b) / 2; bn = Math.sqrt(a * b);
+        if (Math.abs(an - bn) < 1e-17 * an) { a = an; break; }
+        a = an; b = bn;
+      }
+      return Math.PI / (2 * a);
+    }
+    function exato(t) { var k = Math.sin(t / 2); return 2 / Math.PI * ellipk(k * k); }
+
+    /* a serie que o SymPy devolve, truncada no grau pedido */
+    var C = [[0, 1], [2, 1 / 16], [4, 11 / 3072], [6, 173 / 737280],
+             [8, 22931 / 1321205760]];
+    function serie(t, g) {
+      var s = 0;
+      C.forEach(function (c) { if (c[0] <= g) s += c[1] * Math.pow(t, c[0]); });
+      return s;
+    }
+
+    /* trapezio na forma de Legendre, com n intervalos */
+    function legendre(t, n) {
+      var k = Math.sin(t / 2), h = (Math.PI / 2) / n, s = 0, i, ph;
+      for (i = 0; i <= n; i++) {
+        ph = i * h;
+        var y = 1 / Math.sqrt(1 - k * k * Math.sin(ph) * Math.sin(ph));
+        s += (i === 0 || i === n) ? y / 2 : y;
+      }
+      return 2 / Math.PI * h * s;
+    }
+    /* a integral original, com o ultimo ponto descartado por ser singular */
+    function ingenua(t, n) {
+      var h = t / n, s = 0, i, th;
+      for (i = 0; i < n; i++) {
+        th = i * h;
+        var d = Math.cos(th) - Math.cos(t);
+        var y = d > 0 ? 1 / Math.sqrt(d) : 0;
+        s += (i === 0) ? y / 2 : y;
+      }
+      return Math.SQRT2 / Math.PI * h * s;
+    }
+
+    opcoes(corpo, [{ rot: 'O período', v: 0 },
+                   { rot: 'Por que a substituição', v: 1 }], 0,
+      function (v) { vista = v; desenhar(); });
+
+    opcoes(corpo, [{ rot: 'série até θ²', v: 2 },
+                   { rot: 'até θ⁴', v: 4 },
+                   { rot: 'até θ⁸', v: 8 }], 2,
+      function (v) { grau = v; desenhar(); });
+    var barraGrau = corpo.querySelectorAll('.botoes');
+    barraGrau = barraGrau[barraGrau.length - 1];
+
+    var dT = deslizante(corpo, 'Amplitude:', 5, 179, 1, GRAUS0,
+      function (v) { t0 = v * Math.PI / 180; desenhar(); },
+      function (v) { return v + '°'; });
+
+    var mostrar = cartoes(corpo, [
+      { rot: 'T/T₀ exato', k: 'a' },
+      { rot: 'série', k: 'b' },
+      { rot: 'erro da série', k: 'c' },
+      { rot: 'trapézio, 8 pontos', k: 'd' }
+    ]);
+    var saida = el('div', { class: 'saida' });
+    corpo.appendChild(saida);
+
+    function desenhar() {
+      var p = G.preparar(cv, Math.min(300, Math.max(230, cv.clientWidth * 0.32)));
+      barraGrau.style.display = vista === 0 ? '' : 'none';
+      var i, g, ct;
+
+      if (vista === 0) {
+        g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: 0, xmax: 180, ymin: 0.98, ymax: 2.4,
+          rotX: 'amplitude θ₀ (graus)', rotY: 'T/T₀', divY: 4,
+          margem: { e: 54, d: 14, c: 12, b: 36 },
+          marcasX: [0, 45, 90, 135, 180].map(function (v) {
+            return { v: v, r: String(v) + '°' };
+          }),
+          formataY: function (v) { return v.toFixed(1); }
+        });
+        ct = g.ct; ct.save();
+
+        /* as truncagens da serie, da mais pobre a mais rica */
+        [[2, G.COR.clara], [4, G.COR.ambar], [8, G.COR.azul]].forEach(function (par) {
+          ct.beginPath();
+          for (i = 0; i <= 300; i++) {
+            var gr = 180 * i / 300, t = gr * Math.PI / 180;
+            var y = Math.min(serie(t, par[0]), 3);
+            if (i === 0) ct.moveTo(g.X(gr), g.Y(y)); else ct.lineTo(g.X(gr), g.Y(y));
+          }
+          ct.strokeStyle = par[1];
+          ct.lineWidth = par[0] === grau ? 2.4 : 1.2;
+          ct.setLineDash(par[0] === grau ? [] : [4, 3]);
+          ct.stroke(); ct.setLineDash([]);
+        });
+
+        /* o valor exato, por cima de tudo */
+        ct.beginPath();
+        for (i = 0; i <= 400; i++) {
+          var gr2 = 179.6 * i / 400, t2 = gr2 * Math.PI / 180;
+          var y2 = Math.min(exato(t2), 3);
+          if (i === 0) ct.moveTo(g.X(gr2), g.Y(y2)); else ct.lineTo(g.X(gr2), g.Y(y2));
+        }
+        ct.strokeStyle = G.COR.tinta; ct.lineWidth = 2.2; ct.stroke();
+
+        /* a amplitude escolhida */
+        var grx = t0 * 180 / Math.PI;
+        ct.strokeStyle = G.COR.vinho; ct.lineWidth = 1.2; ct.setLineDash([3, 3]);
+        ct.beginPath(); ct.moveTo(g.X(grx), g.y0); ct.lineTo(g.X(grx), g.y1);
+        ct.stroke(); ct.setLineDash([]);
+        ct.fillStyle = G.COR.vinho;
+        ct.beginPath();
+        ct.arc(g.X(grx), g.Y(Math.min(exato(t0), 2.4)), 4, 0, 2 * Math.PI);
+        ct.fill();
+
+        /* legenda */
+        var itens = [['exato', G.COR.tinta], ['θ²', G.COR.clara],
+                     ['θ⁴', G.COR.ambar], ['θ⁸', G.COR.azul]];
+        ct.fillStyle = 'rgba(255,255,255,0.92)';
+        ct.fillRect(g.x0 + 8, g.y0 + 6, 74, 10 + 4 * 14);
+        itens.forEach(function (it, j) {
+          var yy = g.y0 + 18 + j * 14;
+          ct.fillStyle = it[1]; ct.fillRect(g.x0 + 14, yy - 4, 11, 3.5);
+          rotulo(ct, it[0], g.x0 + 30, yy, G.COR.tinta, 'left');
+        });
+        ct.restore();
+
+        var ex = exato(t0), se = serie(t0, grau);
+        mostrar.rotular(['T/T₀ exato', 'série até θ' + (grau === 2 ? '²' :
+                         grau === 4 ? '⁴' : '⁸'), 'erro da série',
+                         'trapézio, 8 pontos']);
+        mostrar({
+          a: N.fmt(ex, 8), b: N.fmt(se, 8),
+          c: N.pct(Math.abs(se - ex) / ex, 3),
+          d: N.fmt(legendre(t0, 8), 8)
+        });
+
+        saida.innerHTML =
+          'Em ' + Math.round(t0 * 180 / Math.PI) + '°, o período é '
+          + N.pct(ex - 1, 2) + ' maior que o do livro-texto. A série de '
+          + 'SymPy truncada no grau ' + grau + ' erra ' + N.pct(Math.abs(se - ex) / ex, 3)
+          + '. Repare que as três truncagens se descolam da curva exata em '
+          + 'pontos bem diferentes, e que <strong>nenhuma</strong> delas serve '
+          + 'perto de 180°, onde o período diverge: série de potências nenhuma '
+          + 'reproduz uma divergência logarítmica. A última ficha mostra que o '
+          + 'trapézio com oito pontos, na forma substituída, acerta onde a série '
+          + 'já desistiu.';
+      } else {
+        /* dois painéis: o integrando original e o substituído */
+        g = G.eixos(cv, {
+          altura: p.A, limpar: false,
+          xmin: 0, xmax: 2, ymin: 0, ymax: 6,
+          rotX: 'θ à esquerda, φ à direita', rotY: 'integrando',
+          divY: 3, margem: { e: 50, d: 14, c: 12, b: 36 },
+          marcasX: [{ v: 0, r: '0' }, { v: 0.95, r: 'θ₀' }, { v: 1.05, r: '0' },
+                    { v: 1.525, r: 'π/4' }, { v: 2, r: 'π/2' }],
+          formataY: function (v) { return v.toFixed(0); }
+        });
+        ct = g.ct; ct.save();
+        /* recorta na moldura: a curva da esquerda sai pelo alto, e deve
+           sair cortada em vez de desenhar um topo achatado falso */
+        ct.beginPath();
+        ct.rect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+        ct.clip();
+
+        /* esquerda: 1/raiz(cos th - cos t0), que estoura em th = t0 */
+        ct.beginPath();
+        for (i = 0; i <= 300; i++) {
+          var u = i / 300, th = u * t0;
+          var d = Math.cos(th) - Math.cos(t0);
+          var y3 = d > 0 ? Math.min(1 / Math.sqrt(d), 40) : 40;
+          if (i === 0) ct.moveTo(g.X(u * 0.95), g.Y(y3));
+          else ct.lineTo(g.X(u * 0.95), g.Y(y3));
+        }
+        ct.strokeStyle = G.COR.vinho; ct.lineWidth = 2.2; ct.stroke();
+
+        /* direita: 1/raiz(1 - k^2 sen^2 phi), limitado */
+        var k2 = Math.pow(Math.sin(t0 / 2), 2);
+        ct.beginPath();
+        for (i = 0; i <= 300; i++) {
+          var v2 = i / 300, ph2 = v2 * Math.PI / 2;
+          var y4 = 1 / Math.sqrt(1 - k2 * Math.sin(ph2) * Math.sin(ph2));
+          if (i === 0) ct.moveTo(g.X(1.05 + 0.95 * v2), g.Y(y4));
+          else ct.lineTo(g.X(1.05 + 0.95 * v2), g.Y(y4));
+        }
+        ct.strokeStyle = G.COR.verde; ct.lineWidth = 2.2; ct.stroke();
+
+        /* a divisória entre os dois painéis */
+        ct.strokeStyle = G.COR.clara; ct.lineWidth = 1;
+        ct.beginPath(); ct.moveTo(g.X(1), g.y0); ct.lineTo(g.X(1), g.y1); ct.stroke();
+        rotulo(ct, 'forma original', g.X(0.47), g.y0 + 14, G.COR.vinho, 'center');
+        rotulo(ct, 'depois da substituição', g.X(1.52), g.y0 + 14, G.COR.verde,
+               'center');
+        ct.restore();
+
+        var ex2 = exato(t0);
+        mostrar.rotular(['exato', 'original, 512 pontos',
+                         'substituída, 8 pontos', 'erro da original']);
+        mostrar({
+          a: N.fmt(ex2, 8), b: N.fmt(ingenua(t0, 512), 8),
+          c: N.fmt(legendre(t0, 8), 8),
+          d: N.sci(Math.abs(ingenua(t0, 512) - ex2), 2)
+        });
+
+        saida.innerHTML =
+          'À esquerda, o integrando como ele sai da conservação de energia: '
+          + 'ele vai a infinito na borda, porque é lá que o pêndulo para. '
+          + 'Nenhuma regra desta aula tolera isso, e o trapézio, mesmo com '
+          + '512 pontos, erra na segunda casa. À direita, o mesmo período '
+          + 'depois da troca \\(\\sen(\\theta/2)=\\sen(\\theta_0/2)\\sen\\varphi\\): '
+          + 'a função ficou limitada, suave, e simétrica nas duas pontas. '
+          + 'O trapézio com <strong>oito</strong> pontos acerta todos os '
+          + 'dígitos. A substituição não melhorou o método; ela consertou o '
+          + 'problema que o método recebia.';
+      }
+      tipografar(saida);
+    }
+
+    registrarRedesenho(desenhar);
+  };
+
 /* ---------- inicialização ---------- */
   document.addEventListener('DOMContentLoaded', function () {
     Array.prototype.forEach.call(document.querySelectorAll('[data-widget]'), function (n) {
