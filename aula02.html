@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aula 2: Raízes de equações | Métodos Numéricos</title>
+<title>Aula 2: Representação em ponto flutuante | Métodos Numéricos</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
-<script src="assets/js/comum.js?v=202611220937"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221002">
+<script src="assets/js/comum.js?v=202611221002"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -17,13 +17,14 @@
     <nav class="menu">
       <a href="index.html">Início</a>
       <span class="grupo">Erro</span>
-      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
-      <span class="grupo">Métodos</span>
-      <a href="aula02.html" class="num ativo" title="Aula 2: Raízes de equações">2</a>
-      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
-      <a href="aula04.html" class="num" title="Aula 4: Integração numérica">4</a>
+      <a href="aula02.html" class="num ativo" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
       <span class="grupo">Fechamento</span>
-      <a href="aula05.html" class="num" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
     </nav>
   </div>
 </header>
@@ -33,536 +34,393 @@
 <aside class="lateral">
   <h4>Nesta aula</h4>
   <ol>
-    <li><a href="#s1">1. O problema, e por que ele não se resolve de cabeça</a></li>
-    <li><a href="#s2">2. Bisseção: lenta e infalível</a></li>
-    <li><a href="#s3">3. Newton-Raphson: trocar a função pela tangente</a></li>
-    <li><a href="#s4">4. A ordem de convergência, medida</a></li>
-    <li><a href="#s5">5. A secante, e a razão áurea</a></li>
-    <li><a href="#s6">6. As três maneiras de Newton falhar</a></li>
-    <li><a href="#s7">7. O critério de parada que engana</a></li>
-    <li><a href="#s8">8. No Spyder</a></li>
-    <li><a href="#s9">9. Exercícios resolvidos</a></li>
-    <li><a href="#s10">10. Exercícios propostos</a></li>
+    <li><a href="#s1">1. Um número com bits contados</a></li>
+    <li><a href="#s2">2. A grade e o épsilon da máquina</a></li>
+    <li><a href="#s3">3. Por que 0,1 + 0,2 não dá 0,3</a></li>
+    <li><a href="#s4">4. A soma não é associativa</a></li>
+    <li><a href="#s5">5. Cancelamento catastrófico</a></li>
+    <li><a href="#s6">6. No Spyder</a></li>
+    <li><a href="#s7">7. Exercícios resolvidos</a></li>
+    <li><a href="#s8">8. Exercícios propostos</a></li>
   </ol>
 </aside>
 
 <main class="conteudo">
 
-  <p class="chapeu">Aula 2 · Resolver, interpolar, integrar</p>
-  <h1>Raízes de equações</h1>
-  <p class="subtitulo">A bisseção não falha nunca e é lenta; Newton dobra o número de dígitos corretos a cada passo e falha de três maneiras diferentes. Escolher entre os dois não é questão de gosto: é saber o que se tem em mãos, e o que se pode garantir.</p>
+  <p class="chapeu">Aula 2 · Como a máquina erra</p>
+  <h1>Representação em ponto flutuante</h1>
+  <p class="subtitulo">Entre dois números de ponto flutuante vizinhos existe um vão, e toda conta cujo resultado caia nesse vão precisa ser arredondada para uma das bordas. Dessa única limitação saem o 0,1 + 0,2 que não dá 0,3, a soma que muda de valor quando se troca a ordem das parcelas, e a fórmula do colégio que devolve zero no lugar de uma raiz que existe.</p>
 
   <div class="bloco def">
     <span class="rotulo">Objetivos</span>
     <ul>
-      <li>Implementar bisseção, Newton-Raphson e secante, e saber o que cada um exige;</li>
-      <li>Deduzir a convergência quadrática de Newton a partir da série de Taylor;</li>
-      <li>Medir a ordem de convergência de um método a partir dos próprios erros;</li>
-      <li>Reconhecer as três maneiras de Newton falhar e saber o que fazer em cada uma;</li>
-      <li>Escrever um critério de parada que não engane;</li>
-      <li>Resolver a equação de van der Waals para o volume molar.</li>
+      <li>Descrever a representação IEEE 754 de precisão dupla e contar os seus bits;</li>
+      <li>Definir o épsilon da máquina e saber medi-lo em três linhas de código;</li>
+      <li>Explicar por que o espaçamento relativo da grade é uniforme e o absoluto não é;</li>
+      <li>Prever quando a soma deixa de ser associativa, e o que fazer a respeito;</li>
+      <li>Reconhecer cancelamento catastrófico e reescrever a fórmula para evitá-lo;</li>
+      <li>Saber o que o lema de Sterbenz diz, e por que ele desfaz a explicação intuitiva.</li>
     </ul>
   </div>
 
   <hr class="linha">
 
   <!-- ================================================== -->
-  <h2 id="s1">1. O problema, e por que ele não se resolve de cabeça</h2>
+  <h2 id="s1">1. Um número com bits contados</h2>
 
-  <p>Dada \(f:\R\to\R\), achar \(r\) tal que \(f(r) = 0\). O enunciado é curto e a dificuldade
-  é desproporcional a ele.</p>
+  <p>Os números reais são infinitos em dois sentidos ao mesmo tempo: existem infinitos deles, e
+  cada um precisa, em geral, de infinitos dígitos para ser escrito. Um computador tem memória
+  finita. A conclusão é imediata e vale a pena enunciá-la sem rodeios: <strong>a imensa maioria
+  dos números reais não existe dentro do computador</strong>, e a aritmética que ele faz não é
+  a aritmética dos reais.</p>
 
-  <p>Para polinômios de grau até quatro existe fórmula fechada, e Abel e Ruffini mostraram no
-  começo do século XIX que de grau cinco em diante não existe, nem pode existir, fórmula geral
-  por radicais. Isso já encerraria o assunto, mas o caso que aparece na prática é ainda menos
-  favorável: equações que misturam polinômios com exponenciais, logaritmos ou funções
-  trigonométricas, para as quais nunca houve esperança de fórmula.</p>
+  <p>O padrão IEEE 754, que todo processador atual implementa, resolve o problema da seguinte
+  maneira. Um número de precisão dupla ocupa 64 bits, repartidos assim:</p>
 
-  <div class="bloco fisica">
-    <span class="rotulo">Três que aparecem em Física</span>
-    <ul>
-      <li>A <strong>lei de deslocamento de Wien</strong> sai de \(5(1-e^{-x}) = x\), cuja raiz
-      \(x = 4{,}965\ldots\) não tem forma fechada em funções elementares;</li>
-      <li>A <strong>equação de Kepler</strong>, \(M = E - e\sen E\), que dá a posição de um
-      planeta na órbita, precisa ser invertida numericamente a cada ponto da trajetória;</li>
-      <li>A <strong>equação de van der Waals</strong>, resolvida para o volume molar, é cúbica
-      em \(V\) e aparece na seção 8 como o exemplo que se resolve de ponta a ponta.</li>
-    </ul>
-  </div>
+  <table>
+    <tr><th>Campo</th><th>Bits</th><th>Função</th></tr>
+    <tr><td>sinal \(s\)</td><td>1</td><td>positivo ou negativo</td></tr>
+    <tr><td>expoente \(E\)</td><td>11</td><td>a potência de dois, deslocada de 1023</td></tr>
+    <tr><td>mantissa \(M\)</td><td>52</td><td>os dígitos binários significativos</td></tr>
+  </table>
 
-  <p>A estratégia comum aos três métodos desta aula é a mesma de quase todo método numérico:
-  construir uma sequência \(x_0, x_1, x_2,\ldots\) que convirja para \(r\), e parar quando o
-  erro for aceitável. A diferença entre eles está em como cada passo é dado, e o preço de cada
-  escolha aparece em duas moedas: quantas iterações são necessárias, e o que pode dar errado.</p>
+  <p>O valor representado é</p>
 
-  <!-- ================================================== -->
-  <h2 id="s2">2. Bisseção: lenta e infalível</h2>
+  <p>\[ x = (-1)^{s}\,\bigl(1 + M\cdot 2^{-52}\bigr)\cdot 2^{E-1023}, \]</p>
 
-  <p>Se \(f\) é contínua em \([a,b]\) e \(f(a)f(b) < 0\), o teorema do valor intermediário
-  garante que existe pelo menos uma raiz dentro do intervalo. Essa garantia é tudo de que a
-  bisseção precisa, e é também tudo o que ela usa: o método não olha para o tamanho de \(f\),
-  só para o sinal.</p>
+  <p>com \(M\) um inteiro entre \(0\) e \(2^{52}-1\). O detalhe que explica quase tudo o que
+  vem a seguir está no fator \(1 + M\cdot2^{-52}\): a mantissa representa um número entre 1 e
+  2, e o expoente diz em que potência de dois esse número deve ser colocado. O 1 da frente não
+  é armazenado, porque em binário normalizado ele é sempre 1, e por isso se ganha um bit de
+  graça. É o chamado <em>bit implícito</em>.</p>
 
   <div class="bloco def">
-    <span class="rotulo">O método</span>
-    <p>Calcule \(m = (a+b)/2\). Se \(f(a)f(m) \le 0\), a raiz está em \([a,m]\), e esse passa a
-    ser o novo intervalo; caso contrário ela está em \([m,b]\). Repita.</p>
-    <p>Depois de \(n\) passos, o intervalo tem largura \((b-a)/2^n\) e a raiz está em algum
-    lugar dentro dele. O erro é <strong>garantido</strong>:</p>
-    <p>\[ |x_n - r| \le \frac{b-a}{2^{n+1}}. \]</p>
+    <span class="rotulo">A consequência estrutural</span>
+    <p>Fixado o expoente, os números representáveis são \(2^{52}\) pontos igualmente espaçados
+    dentro de um intervalo \([2^{k}, 2^{k+1})\). Como esse intervalo dobra de largura a cada
+    incremento de \(k\), e o número de pontos dentro dele é sempre o mesmo, <strong>o
+    espaçamento absoluto dobra a cada potência de dois</strong>.</p>
+    <p>A reta real não é coberta por uma grade uniforme: é coberta por uma grade que fica mais
+    grossa conforme se afasta da origem, e cuja finura <em>relativa</em> é constante.</p>
   </div>
 
-  <p>A palavra garantida é o ponto forte do método, e ela é rara. Nenhum outro método desta
-  aula oferece um limite de erro que valha antes de rodar: com a bisseção dá para dizer, antes
-  de começar, quantas iterações serão necessárias para uma dada precisão. Invertendo a
-  desigualdade:</p>
-
-  <p>\[ n \ge \log_2\!\left(\frac{b-a}{\varepsilon}\right) - 1. \]</p>
-
-  <p>Partindo de um intervalo de largura 1 e pedindo \(\varepsilon = 10^{-15}\), são 49
-  iterações. O programa da seção 8 mede exatamente 49.</p>
-
-  <p>O preço é a lentidão. Cada passo ganha um bit, isto é, cerca de 0,3 dígito decimal, e isso
-  não melhora nunca: a bisseção converge do mesmo jeito perto e longe da raiz, porque ela não
-  usa nenhuma informação sobre a função além do sinal. É <strong>convergência linear</strong>,
-  com taxa exatamente \(1/2\).</p>
+  <p>Com 11 bits de expoente, a faixa coberta vai de cerca de \(10^{-308}\) a \(10^{308}\).
+  Fora dela há dois comportamentos distintos: acima, o resultado vira <code>inf</code>, o que
+  se chama <em>overflow</em>; abaixo, ele perde dígitos de mantissa gradualmente até virar
+  zero, o que se chama <em>underflow gradual</em>. Vale notar a assimetria: o overflow destrói
+  o cálculo de maneira escandalosa e por isso é fácil de perceber, enquanto o underflow o
+  destrói em silêncio.</p>
 
   <!-- ================================================== -->
-  <h2 id="s3">3. Newton-Raphson: trocar a função pela tangente</h2>
+  <h2 id="s2">2. A grade e o épsilon da máquina</h2>
 
-  <p>A ideia é a mais produtiva do cálculo numérico, e reaparece nas aulas 3 e 4: quando um
-  problema é difícil, troque a função pela sua aproximação linear, resolva o problema linear,
-  que é fácil, e repita.</p>
+  <p>A medida padrão da finura da grade é o <strong>épsilon da máquina</strong>, definido como
+  a distância de 1 até o próximo número representável:</p>
 
-  <p>Perto de \(x_n\), a reta tangente é \(y = f(x_n) + f'(x_n)(x - x_n)\). Ela cruza o eixo em</p>
+  <p>\[ \varepsilon_{\text{máq}} = 2^{-52} \approx 2{,}22\times 10^{-16}. \]</p>
 
-  <p>\[ \boxed{\;x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}.\;} \]</p>
+  <p>Não é preciso aceitar esse número por autoridade, e seria péssimo começar um curso de
+  métodos numéricos fazendo isso. Ele se mede em três linhas, partindo de 1 e dividindo por
+  dois até que somar a parcela a 1 deixe de mudar o resultado:</p>
 
-  <p>É isso. O widget abaixo desenha a tangente e o ponto onde ela corta o eixo, passo a passo,
-  e vale usá-lo antes de ler a dedução que vem em seguida.</p>
+  <pre><code>e = 1.0
+while 1.0 + e/2.0 != 1.0:
+    e = e/2.0</code></pre>
 
-  <div data-widget="newton"></div>
-
-  <h3>De onde vem a convergência quadrática</h3>
-
-  <p>Escreva o erro como \(e_n = x_n - r\) e expanda \(f\) em torno de \(x_n\), avaliando em
-  \(r\), onde \(f\) se anula:</p>
-
-  <p>\[ 0 = f(r) = f(x_n) - f'(x_n)e_n + \tfrac{1}{2}f''(\xi)e_n^2, \]</p>
-
-  <p>com \(\xi\) entre \(r\) e \(x_n\). Dividindo por \(f'(x_n)\) e reconhecendo o passo de
-  Newton:</p>
-
-  <p>\[ \frac{f(x_n)}{f'(x_n)} = e_n - \frac{f''(\xi)}{2f'(x_n)}e_n^2
-     \quad\Longrightarrow\quad
-     e_{n+1} = e_n - \frac{f(x_n)}{f'(x_n)} = \frac{f''(\xi)}{2f'(x_n)}\,e_n^2. \]</p>
-
-  <div class="bloco def">
-    <span class="rotulo">O resultado</span>
-    <p>\[ |e_{n+1}| \approx \left|\frac{f''(r)}{2f'(r)}\right|\,|e_n|^2. \]</p>
-    <p>O erro novo é proporcional ao <strong>quadrado</strong> do erro velho. Em termos de
-    dígitos: se \(x_n\) tem \(d\) dígitos corretos, \(x_{n+1}\) tem cerca de \(2d\). A sequência
-    típica de erros é \(10^{-1}\), \(10^{-2}\), \(10^{-4}\), \(10^{-8}\), \(10^{-16}\), e aí
-    acabou, porque não há mais dígitos na máquina.</p>
-  </div>
-
-  <p>Daí a regra de bolso: <strong>Newton converge em cinco ou seis iterações, ou não
-  converge</strong>. Se o seu programa está na vigésima iteração, alguma coisa está errada, e a
-  seção 6 lista o que pode ser.</p>
-
-  <p>A dedução deixa visíveis as duas hipóteses que serão cobradas depois. Foi preciso dividir
-  por \(f'(x_n)\), que portanto não pode ser zero nem muito pequeno; e foi preciso truncar
-  Taylor no segundo termo, o que só é legítimo se \(e_n\) já for pequeno. As duas falham
-  exatamente nos casos da seção 6.</p>
-
-  <!-- ================================================== -->
-  <h2 id="s4">4. A ordem de convergência, medida</h2>
-
-  <p>Dizer que um método é quadrático é uma afirmação verificável, e verificá-la é bom hábito:
-  ela também detecta derivada escrita errada, que é o erro mais comum ao programar Newton.</p>
-
-  <div class="bloco def">
-    <span class="rotulo">Definição</span>
-    <p>Um método tem <strong>ordem \(p\)</strong> se, para \(n\) grande,</p>
-    <p>\[ |e_{n+1}| \approx C\,|e_n|^{p}. \]</p>
-    <p>Com \(p=1\) a convergência é linear e \(C\) é a taxa, que precisa ser menor que 1. Com
-    \(p=2\) é quadrática, e aí o valor de \(C\) quase não importa.</p>
-  </div>
-
-  <p>Tomando logaritmos, \(\log|e_{n+1}| \approx \log C + p\log|e_n|\): os pontos
-  \((\log|e_n|, \log|e_{n+1}|)\) caem numa reta de inclinação \(p\). Medir a ordem é ajustar
-  essa reta.</p>
+  <p>O programa da seção 6 roda isso e compara com o <code>sys.float_info.epsilon</code> e com
+  \(2^{-52}\): os três coincidem bit a bit.</p>
 
   <div class="bloco alerta">
-    <span class="rotulo">Dois cuidados que o programa teve de tomar</span>
-    <p><strong>O piso de precisão.</strong> Quando o erro chega perto de
-    \(\varepsilon_{\text{máq}}\), ele para de cair e passa a oscilar no arredondamento. As
-    razões calculadas ali não medem convergência, medem ruído, e precisam ser descartadas. O
-    programa corta a janela no primeiro erro abaixo de cem vezes o épsilon local.</p>
-    <p><strong>A razão entre dois logaritmos consecutivos não serve para todo método.</strong>
-    É a fórmula que aparece nos livros e funciona bem para Newton. Para a bisseção ela
-    fracassa, porque o erro não cai por um fator fixo: o ponto médio às vezes calha de cair
-    quase em cima da raiz, o erro despenca, e no passo seguinte volta a subir. As estimativas
-    individuais que saem disso são 1,70, −0,03, −71,89, −0,79… Nenhuma vale sozinha. Ajustar
-    a reta por mínimos quadrados usa todos os pontos e faz a média do ruído.</p>
+    <span class="rotulo">O que o épsilon não é</span>
+    <p>Ele <strong>não</strong> é o menor número representável. Esse é da ordem de
+    \(10^{-308}\), catorze ordens de grandeza menor. O épsilon é uma medida de
+    <em>resolução relativa</em>, não de tamanho: ele diz quantos dígitos significativos cabem
+    num número, e não quão pequeno um número pode ser.</p>
+    <p>Confundir os dois leva ao erro clássico de testar convergência com
+    <code>abs(x) &lt; 1e-308</code> em vez de <code>abs(dx) &lt; 1e-12*abs(x)</code>.</p>
   </div>
 
+  <p>Perto de um número \(x\) qualquer, o espaçamento da grade vale aproximadamente
+  \(\varepsilon_{\text{máq}}\cdot|x|\). Em \(x=1\) ele é \(2{,}2\times10^{-16}\); em
+  \(x=10^{16}\) ele vale 2, e portanto \(10^{16}+1\) não existe e é arredondado de volta para
+  \(10^{16}\). O widget abaixo mostra essa grade, e vale passear por ele antes de seguir.</p>
+
+  <div data-widget="grade"></div>
+
+  <!-- ================================================== -->
+  <h2 id="s3">3. Por que 0,1 + 0,2 não dá 0,3</h2>
+
+  <p>O exemplo é tão famoso que já virou piada de rede social, e quase sempre é explicado
+  errado, como se fosse uma falha de precisão da soma. Não é: o problema acontece antes da
+  soma, na hora de escrever as parcelas.</p>
+
+  <p>Em base dez, \(1/3\) é uma dízima periódica, e escrevê-la com um número finito de casas
+  obriga a arredondar. Em base dois acontece o mesmo com \(1/10\). O número \(0{,}1\) em
+  binário é</p>
+
+  <p>\[ 0{,}1 = 0{,}0\overline{0011}_2, \]</p>
+
+  <p>uma dízima infinita. O computador guarda o número representável mais próximo, que não é
+  \(0{,}1\), e sim \(0{,}1000000000000000055511151231257827\ldots\) O mesmo vale para
+  \(0{,}2\) e para \(0{,}3\), cada um com o seu próprio erro de arredondamento. A soma dos dois
+  primeiros arredondados não tem motivo algum para coincidir com o arredondamento do
+  terceiro.</p>
+
   <div class="bloco ex">
-    <span class="rotulo">O que o programa mede</span>
+    <span class="rotulo">Os três números, com todas as casas</span>
     <table>
-      <tr><th>Método</th><th>Pontos úteis</th><th>Ordem medida</th><th>Prevista</th><th>Erro</th></tr>
-      <tr><td>bisseção</td><td>41</td><td>0,9739</td><td>1</td><td>2,6 %</td></tr>
-      <tr><td>Newton</td><td>5</td><td>1,9366</td><td>2</td><td>3,2 %</td></tr>
-      <tr><td>secante</td><td>7</td><td>1,6198</td><td>1,6180</td><td>0,1 %</td></tr>
+      <tr><th>Quantidade</th><th>Valor efetivamente armazenado</th></tr>
+      <tr><td>\(0{,}1 + 0{,}2\)</td><td><code>0.30000000000000004441</code></td></tr>
+      <tr><td>\(0{,}3\)</td><td><code>0.29999999999999998890</code></td></tr>
+      <tr><td>diferença</td><td><code>5,551e-17</code></td></tr>
+      <tr><td>espaçamento da grade em 0,3</td><td><code>5,551e-17</code></td></tr>
     </table>
-    <p>Para a bisseção a ordem não é o número interessante, porque toda convergência linear tem
-    ordem 1. O que distingue uma linear de outra é a <strong>taxa</strong>, e ela sai da
-    inclinação de \(\log|e_n|\) contra \(n\): o programa mede <strong>0,500750</strong>, contra
-    o \(1/2\) previsto pelo corte do intervalo ao meio.</p>
+    <p>A diferença é de <strong>exatamente um passo da grade</strong>: os dois números são
+    vizinhos, tão próximos quanto dois números distintos podem ser naquela região. Não há como
+    fazer melhor sem mudar a representação.</p>
+  </div>
+
+  <p>Daí sai a regra prática mais útil desta aula inteira, e ela cabe numa linha: <strong>nunca
+  compare dois números de ponto flutuante com igualdade</strong>. Compare a diferença com uma
+  tolerância, e prefira a tolerância relativa:</p>
+
+  <pre><code>if abs(a - b) &lt; 1e-12 * max(abs(a), abs(b), 1.0):
+    ...</code></pre>
+
+  <p>O <code>max</code> com 1,0 no fim evita que a tolerância relativa vire zero quando os dois
+  números são minúsculos, caso em que ela deixaria de funcionar justamente onde mais se
+  precisa dela.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s4">4. A soma não é associativa</h2>
+
+  <p>Na aritmética dos reais, \((a+b)+c = a+(b+c)\) sempre. Na aritmética de ponto flutuante,
+  não. Tome \(a = 10^{16}\), \(b = -10^{16}\) e \(c = 1\):</p>
+
+  <p>\[ (a+b)+c = 0 + 1 = 1, \qquad a+(b+c) = 10^{16} + (-10^{16}+1) = 10^{16}-10^{16} = 0. \]</p>
+
+  <p>O segundo resultado é zero porque \(-10^{16}+1\) é arredondado de volta para \(-10^{16}\),
+  já que o espaçamento da grade ali vale 2 e o 1 não chega a um passo. A associatividade se
+  perdeu, e com ela se perde o direito de reordenar parcelas livremente, o que é exatamente o
+  que todo compilador otimizador gostaria de fazer e o que toda soma em paralelo faz por
+  construção.</p>
+
+  <div class="bloco fisica">
+    <span class="rotulo">Por que isso importa fora do caso extremo</span>
+    <p>Somando um milhão de números positivos da ordem de 1, a soma parcial chega à casa de
+    \(10^{5}\) e o espaçamento da grade ali já vale \(10^{-11}\). Cada parcela nova é
+    arredondada contra essa grade, e os erros se acumulam. Somando <strong>do menor para o
+    maior</strong>, a soma parcial fica pequena pelo maior tempo possível, a grade fica fina
+    pelo maior tempo possível, e o erro final é menor. Medido no programa da seção 6: ordenar
+    em ordem crescente erra \(-2{,}9\times10^{-9}\), e em ordem decrescente,
+    \(+2{,}4\times10^{-8}\), oito vezes mais.</p>
+  </div>
+
+  <p>Há uma surpresa útil escondida aqui, e o programa a encontra por acidente: refazendo esse
+  teste com <code>np.sum</code>, as duas ordens dão <em>exatamente o mesmo número</em>, e com
+  erro zero. O NumPy não soma da esquerda para a direita. Ele usa <strong>soma por
+  pares</strong>, que divide o vetor ao meio recursivamente e soma cada metade, e cujo erro
+  cresce como \(\log n\) em vez de \(n\).</p>
+
+  <p>Para ver o efeito foi preciso escrever o laço à mão, que é precisamente o que faz quem
+  prefere escrever o laço a chamar a biblioteca. A conclusão prática inverte a expectativa
+  usual do curso: aqui, a biblioteca madura não é só mais rápida, ela é <em>mais correta</em>,
+  e o laço escrito à mão é que merece desconfiança.</p>
+
+  <div class="bloco def">
+    <span class="rotulo">Soma compensada de Kahan</span>
+    <p>Quando a soma precisa ser feita incrementalmente, e portanto não dá para usar
+    \(\texttt{np.sum}\), o algoritmo de Kahan recupera a precisão com uma variável a mais, que
+    carrega o pedaço perdido no arredondamento anterior:</p>
+    <pre><code>s = 0.0
+c = 0.0
+for x in v:
+    y = x - c          # devolve o que se perdeu da vez passada
+    t = s + y          # esta soma arredonda e perde um pedaço
+    c = (t - s) - y    # e este é exatamente o pedaço perdido
+    s = t</code></pre>
+    <p>A linha que importa é a terceira. Em aritmética exata ela daria zero; é justamente
+    porque a aritmética não é exata que ela captura o erro. Medido no programa: Kahan devolve o
+    mesmo valor do <code>math.fsum</code>, que é exatamente arredondado.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s5">5. A secante, e a razão áurea</h2>
+  <h2 id="s5">5. Cancelamento catastrófico</h2>
 
-  <p>Newton exige \(f'\), e nem sempre se tem. A função pode vir de uma tabela de medidas, de
-  outro programa, ou de uma expressão cuja derivada é longa o bastante para que escrevê-la à
-  mão seja um convite ao erro.</p>
+  <p>Este é o modo de falha mais importante do curso, porque é silencioso, destrói todos os
+  dígitos de uma vez e acontece em fórmulas que todo mundo aprendeu no colégio.</p>
 
-  <p>A secante troca a tangente pela reta que passa por dois pontos já calculados:</p>
+  <p>Considere a equação \(x^2 + bx + 1 = 0\) com \(b\) grande e positivo. A fórmula de
+  Bhaskara dá</p>
 
-  <p>\[ f'(x_n) \approx \frac{f(x_n) - f(x_{n-1})}{x_n - x_{n-1}}
-     \quad\Longrightarrow\quad
-     x_{n+1} = x_n - f(x_n)\,\frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}. \]</p>
+  <p>\[ x_{\pm} = \frac{-b \pm \sqrt{b^2 - 4}}{2}. \]</p>
 
-  <p>A ordem de convergência cai de 2 para \(\varphi = (1+\sqrt{5})/2 \approx 1{,}618\), a razão
-  áurea, e esse número tem uma origem bonita. Pode-se mostrar que o erro da secante satisfaz
-  \(|e_{n+1}| \sim C|e_n||e_{n-1}|\). Procurando uma solução da forma
-  \(|e_n| \sim A|e_{n-1}|^{p}\), vem \(p^2 = p + 1\), que é exatamente a equação da razão
-  áurea.</p>
-
-  <div class="bloco fisica">
-    <span class="rotulo">E na prática a secante costuma ganhar</span>
-    <p>Comparar 1,618 com 2 subestima a secante, porque conta passos e não custo. Cada passo de
-    Newton exige <em>duas</em> avaliações, \(f\) e \(f'\), enquanto a secante reaproveita o
-    valor anterior e gasta <em>uma</em>. Comparando por avaliação de função, Newton rende
-    \(\sqrt{2} \approx 1{,}414\) e a secante rende 1,618.</p>
-    <p>Quando avaliar \(f\) é caro, que é o caso sempre que \(f\) envolve resolver outro
-    problema numérico, a secante é o método mais eficiente dos três.</p>
-  </div>
-
-  <!-- ================================================== -->
-  <h2 id="s6">6. As três maneiras de Newton falhar</h2>
-
-  <p>A dedução da seção 3 pediu duas coisas: derivada não nula e chute já próximo da raiz. As
-  falhas são o que acontece quando cada uma dessas hipóteses é violada.</p>
-
-  <h3>(a) Derivada nula, ou quase</h3>
-
-  <p>Com \(f'(x_n) = 0\) a tangente é horizontal e não cruza o eixo; a fórmula divide por zero e
-  o programa para. Esse é o caso benigno, porque ele avisa.</p>
-
-  <p>O caso perigoso é a derivada <em>quase</em> nula, que não avisa. Em \(f(x) = x^3-2x-5\), a
-  derivada se anula em \(\sqrt{2/3} = 0{,}8165\ldots\), e partindo de perto dali:</p>
+  <p>Quando \(b\) é grande, \(\sqrt{b^2-4}\) é quase igual a \(b\), e a raiz \(x_+\) pede a
+  subtração de dois números quase idênticos. Veja o que acontece:</p>
 
   <div class="bloco ex">
-    <span class="rotulo">O salto</span>
+    <span class="rotulo">A fórmula do colégio contra a fórmula estável</span>
     <table>
-      <tr><th>\(x_0\)</th><th>\(f'(x_0)\)</th><th>próximo \(x\)</th></tr>
-      <tr><td>0,817496580928</td><td>\(4{,}9\times10^{-3}\)</td><td>\(1{,}24\times10^{3}\)</td></tr>
-      <tr><td>0,816497580928</td><td>\(4{,}9\times10^{-6}\)</td><td>\(1{,}24\times10^{6}\)</td></tr>
-      <tr><td>0,816496581928</td><td>\(4{,}9\times10^{-9}\)</td><td>\(1{,}24\times10^{9}\)</td></tr>
+      <tr><th>\(b\)</th><th>Bhaskara direta</th><th>Forma estável</th><th>Erro relativo da direta</th></tr>
+      <tr><td>\(10^{2}\)</td><td><code>-1,00010002000488e-02</code></td><td><code>-1,00010002000500e-02</code></td><td>\(1{,}2\times10^{-13}\)</td></tr>
+      <tr><td>\(10^{4}\)</td><td><code>-1,00000001111766e-04</code></td><td><code>-1,00000001000000e-04</code></td><td>\(1{,}1\times10^{-9}\)</td></tr>
+      <tr><td>\(10^{6}\)</td><td><code>-1,00000761449337e-06</code></td><td><code>-1,00000000000100e-06</code></td><td>\(7{,}6\times10^{-6}\)</td></tr>
+      <tr><td>\(10^{8}\)</td><td><code>-7,45058059692383e-09</code></td><td><code>-1,00000000000000e-08</code></td><td>\(2{,}5\times10^{-1}\)</td></tr>
+      <tr><td>\(10^{10}\)</td><td><code>0,00000000000000e+00</code></td><td><code>-1,00000000000000e-10</code></td><td>\(1\)</td></tr>
     </table>
-    <p>Com \(x_0\) a um bilionésimo do ponto crítico, um único passo joga o chute para
-    \(10^{9}\). Nesta cúbica a história acaba bem, porque ela cresce e Newton acaba voltando;
-    numa função com várias raízes, o salto cai em outra bacia e o método converge para a raiz
-    errada, sem dizer nada.</p>
+    <p>Em \(b=10^{10}\) a fórmula direta devolve <strong>zero</strong> para uma raiz que vale
+    \(-10^{-10}\). Não é uma aproximação ruim: é a perda de todos os dígitos. A forma estável
+    mantém quinze dígitos corretos em toda a faixa.</p>
   </div>
 
-  <h3>(b) Ciclo</h3>
-
-  <p>Em \(f(x) = x^3 - 2x + 2\), partindo de \(x_0 = 0\), Newton gera a sequência
-  \(0, 1, 0, 1, 0, 1,\ldots\) para sempre. O ciclo é exato, e não aproximado: cada ponto se
-  mapeia no outro tanto em aritmética exata quanto em ponto flutuante.</p>
-
-  <p>O detalhe cruel é que <strong>nenhum critério de parada baseado em
-  \(|x_{n+1}-x_n|\) detecta isso</strong>, porque essa diferença não diminui nunca. O programa
-  roda até estourar o limite de iterações, e é por isso que esse limite precisa existir.</p>
-
-  <h3>(c) Divergência: o chute fora da bacia de atração</h3>
-
-  <p>A função \(\arctg x\) tem raiz única em zero e é o exemplo mais limpo. Newton converge se
-  \(|x_0|\) for menor que um certo limiar e diverge se for maior. O limiar não aparece na
-  função: ele é a órbita de período 2 do mapa de Newton, o ponto em que \(x\) vai para \(-x\),
-  e sai de \(\arctg x = 2x/(1+x^2)\). O programa o resolve e obtém
-  \(x^{*} = 1{,}3917452003\).</p>
-
-  <div class="bloco ex">
-    <span class="rotulo">A navalha</span>
-    <table>
-      <tr><th>\(x_0\)</th><th>destino</th><th>\(|x|\) final</th></tr>
-      <tr><td>1,000000</td><td>convergiu</td><td>0</td></tr>
-      <tr><td>1,391744</td><td>convergiu</td><td>0</td></tr>
-      <tr><td>1,391746</td><td>divergiu</td><td>\(1{,}6\times10^{230}\)</td></tr>
-      <tr><td>1,500000</td><td>divergiu</td><td>\(9{,}5\times10^{216}\)</td></tr>
-    </table>
-    <p>Um milionésimo abaixo do limiar converge; um milionésimo acima diverge.</p>
-  </div>
-
-  <p>A segunda vista do widget mostra o mesmo fenômeno de outra forma, em
-  \(f(x) = x^3-5x\), que tem três raízes reais. Cada ponto de partida é pintado com a cor da
-  raiz a que Newton chega. Na maior parte da reta o resultado é o esperado e cada ponto vai
-  para a raiz mais próxima, mas há regiões em que isso falha.</p>
-
-  <div class="bloco fisica">
-    <span class="rotulo">Onde as faixas se acumulam, e por quê</span>
-    <p>A intuição diz que a confusão deveria estar nos pontos onde \(f'=0\), em
-    \(\pm\sqrt{5/3} = \pm1{,}291\), que é onde Newton escorrega. Medido, não é: ampliando em
-    torno de \(1{,}291\) aparecem sempre três faixas e nada mais, até que em \(10^{-10}\) a
-    janela cabe inteira dentro de uma faixa só e as trocas desaparecem. A estrutura ali
-    termina.</p>
-    <p>A estrutura fina está em \(x = \pm 1\), e a razão é a mesma do limiar do arco-tangente.
-    O mapa de Newton desta cúbica é</p>
-    <p>\[ N(x) = x - \frac{x^3-5x}{3x^2-5} = \frac{2x^3}{3x^2-5}, \]</p>
-    <p>e vale \(N(1) = -1\) e \(N(-1) = 1\): o par \(\{1,-1\}\) é uma <strong>órbita de
-    período 2</strong>. Ela é repelente, com multiplicador \(|(N\circ N)'(1)| = 36\), e é
-    sobre ela que as faixas se acumulam. Ampliando em torno de \(x=1\), o programa conta de
-    seis a sete trocas de cor em <em>cada</em> escala, de \(10^{-1}\) até \(10^{-10}\): a
-    estrutura não termina.</p>
-    <p>Os dois exemplos da aula são portanto o mesmo exemplo. O limiar \(1{,}3917\) do
-    arco-tangente também era a órbita de período 2 do seu mapa de Newton, obtida de
-    \(\arctg x = 2x/(1+x^2)\), que é a condição \(N(x) = -x\). Órbitas periódicas
-    repelentes são o que estraga a previsibilidade de Newton, e não as derivadas nulas, que
-    apenas produzem saltos grandes.</p>
-  </div>
+  <p>Convém ser preciso sobre o que aconteceu, porque a explicação intuitiva é enganosa. A
+  subtração em si <strong>não introduz erro nenhum</strong>: subtrair dois números de ponto
+  flutuante próximos é uma operação exata, e isso é um teorema, conhecido como lema de
+  Sterbenz.</p>
 
   <div class="bloco alerta">
-    <span class="rotulo">A conclusão prática: métodos híbridos</span>
-    <p>Não existe tolerância de chute inicial que proteja disso, porque a estrutura continua
-    fina em qualquer escala em que se olhe. Por isso o método padrão das bibliotecas não é
-    Newton puro: é um <strong>híbrido</strong>, que mantém um intervalo com troca de sinal e só
-    aceita o passo de Newton quando ele cai dentro desse intervalo, bissectando em caso
-    contrário.</p>
-    <p>O resultado tem a garantia da bisseção e a velocidade de Newton. É o que fazem o
-    <code>brentq</code> do SciPy e a <code>fsolve</code>, e é por isso que a resposta certa, em
-    código de produção, quase sempre é chamar a biblioteca.</p>
+    <span class="rotulo">O que a subtração faz é revelar, não criar</span>
+    <p>O erro já estava lá, cometido pela raiz quadrada, escondido na décima sexta casa de um
+    número da ordem de \(b\). Ao subtrair dois números cujos quinze primeiros dígitos são
+    iguais, esses quinze dígitos se cancelam entre si, e o lixo que ocupava a décima sexta casa
+    <strong>sobe para a primeira</strong>. O erro relativo, que era \(10^{-16}\), passa a ser
+    \(10^{-16}\) dividido pelo quanto o resultado encolheu.</p>
+    <p>Por isso a saída nunca é "calcular com mais cuidado", nem aumentar a precisão: é
+    <strong>reescrever a fórmula para que a subtração não aconteça</strong>.</p>
   </div>
 
-  <!-- ================================================== -->
-  <h2 id="s7">7. O critério de parada que engana</h2>
+  <p>A reescrita padrão calcula primeiro a raiz em que os sinais <em>somam</em>, que não tem
+  cancelamento nenhum, e obtém a outra pelo produto das raízes, que vale \(c/a\):</p>
 
-  <p>Parar quando \(|f(x_n)|\) for pequeno parece a coisa óbvia a fazer, e não funciona. Resíduo
-  pequeno só garante raiz próxima quando a função é íngreme ali; se ela for achatada, \(f\) pode
-  ser minúsculo bem longe da raiz.</p>
+  <p>\[ q = -\tfrac{1}{2}\Bigl(b + \operatorname{sinal}(b)\sqrt{b^2-4ac}\Bigr),
+     \qquad x_1 = \frac{q}{a}, \qquad x_2 = \frac{c}{q}. \]</p>
 
-  <div class="bloco ex">
-    <span class="rotulo">\(f(x) = (x-1)^8\), cuja única raiz é 1</span>
-    <table>
-      <tr><th>\(x\)</th><th>\(|x-1|\)</th><th>\(f(x)\)</th></tr>
-      <tr><td>1,10</td><td>\(10^{-1}\)</td><td>\(1{,}0\times10^{-8}\)</td></tr>
-      <tr><td>1,05</td><td>\(5\times10^{-2}\)</td><td>\(3{,}9\times10^{-11}\)</td></tr>
-      <tr><td>1,02</td><td>\(2\times10^{-2}\)</td><td>\(2{,}6\times10^{-14}\)</td></tr>
-    </table>
-    <p>Em \(x = 1{,}05\) o resíduo já é \(4\times10^{-11}\), que qualquer programa aceitaria
-    como zero, e o erro na raiz ainda é de 5 %. Com o critério \(|f| &lt; 10^{-10}\), o método
-    para com dois dígitos corretos achando que tem dez.</p>
-  </div>
-
-  <p>O critério correto olha para o <em>passo</em>, e mistura tolerância relativa com absoluta:</p>
-
-  <p>\[ |x_{n+1}-x_n| \le \tau_{\text{rel}}|x_{n+1}| + \tau_{\text{abs}}. \]</p>
-
-  <p>A parte relativa cuida de raízes grandes, para as quais exigir erro absoluto de
-  \(10^{-15}\) seria impossível; a absoluta cuida de raízes perto de zero, onde o erro relativo
-  perde o sentido. Na prática convém exigir as duas coisas, passo pequeno <em>e</em> resíduo
-  pequeno, e impor um teto de iterações para o caso do ciclo.</p>
+  <p>O \(\operatorname{sinal}(b)\) garante que a soma dentro do parêntese seja sempre de dois
+  números de mesmo sinal. É a mesma equação, com as mesmas raízes, reorganizada para que a
+  máquina consiga calculá-la.</p>
 
   <!-- ================================================== -->
-  <h2 id="s8">8. No Spyder</h2>
+  <h2 id="s6">6. No Spyder</h2>
+
+  <p>Nenhuma afirmação numérica desta aula precisa ser aceita por autoridade. Todas foram
+  medidas, e o programa que as mede está na pasta <code>codigo/</code>.</p>
 
   <div class="cartoes">
-    <a class="cartao" href="codigo/raizes.py">
+    <a class="cartao" href="codigo/flutuante.py">
       <span class="numero">Programa</span>
-      <h3>raizes.py</h3>
-      <p>Compara os três métodos no mesmo problema, mede a ordem de convergência de cada um por
-      mínimos quadrados, reproduz as três falhas de Newton e resolve van der Waals para o
-      volume molar do CO₂.</p>
+      <h3>flutuante.py</h3>
+      <p>Mede o épsilon, mapeia o espaçamento da grade em 308 ordens de grandeza, demonstra a
+      não associatividade da soma em quatro algoritmos diferentes, e compara as duas fórmulas da
+      equação do segundo grau contra um gabarito de cinquenta dígitos.</p>
     </a>
   </div>
 
   <p><strong>O que ele imprime, e o que conferir.</strong></p>
 
   <ul>
-  <li>Na cúbica \(x^3-2x-5\), bisseção precisa de 49 iterações, Newton de 7 e a secante de 8,
-  todos chegando à mesma raiz com resíduo na casa de \(10^{-15}\).</li>
-  <li>As ordens medidas dão 0,9739, 1,9366 e 1,6198, contra 1, 2 e 1,618. A taxa da bisseção dá
-  0,500750 contra \(1/2\).</li>
-  <li>O limiar de divergência do \(\arctg\) é <em>resolvido</em>, e não citado: o programa acha
-  \(1{,}3917452003\) como raiz de \(\arctg x = 2x/(1+x^2)\), e mostra a navalha em
-  \(\pm10^{-6}\) em torno dele.</li>
-  <li>A contagem de trocas de bacia, ampliando em torno do ponto crítico e em torno de
-  \(x=1\), separa os dois casos: duas trocas sempre num, seis ou sete em todas as escalas no
-  outro. E o programa confirma \(N(1)=-1\), \(N(-1)=+1\) e multiplicador 36, que é o que
-  identifica a órbita de período 2 como a culpada.</li>
-  <li>Em van der Waals, o desvio do gás ideal vai de 0,04 % a 0,1 bar até 68 % a 100 bar. A
-  derivada analítica usada por Newton é conferida contra uma diferença central, concordando em
-  \(1{,}6\times10^{-10}\).</li>
+  <li>O épsilon medido por bisseção, o <code>sys.float_info.epsilon</code> e \(2^{-52}\)
+  coincidem bit a bit.</li>
+  <li>O espaçamento relativo da grade fica entre \(1{,}1\) e \(2{,}2\times10^{-16}\) de
+  \(x=10^{-8}\) a \(x=10^{300}\), ou seja, 308 ordens de grandeza com resolução relativa
+  praticamente constante. Já o espaçamento absoluto vai de \(1{,}7\times10^{-24}\) a
+  \(1{,}5\times10^{284}\).</li>
+  <li>A diferença entre \(0{,}1+0{,}2\) e \(0{,}3\) é de exatamente um passo da grade naquele
+  ponto, o que o programa confere dividindo uma pela outra.</li>
+  <li>O <code>np.sum</code> dá o mesmo resultado nas duas ordens e com erro zero, porque soma
+  por pares; o laço escrito à mão erra \(-2{,}9\times10^{-9}\) crescente e
+  \(+2{,}4\times10^{-8}\) decrescente. Kahan e <code>math.fsum</code> coincidem.</li>
+  <li>A fórmula estável bate com o gabarito de cinquenta dígitos em todos os casos, com erro
+  relativo exatamente nulo nas cinco linhas da tabela.</li>
   </ul>
 
   <div class="bloco fisica">
-    <span class="rotulo">A raiz tripla, que o programa encontrou sozinho</span>
-    <p>No ponto crítico de van der Waals a cúbica tem <strong>raiz tripla</strong>, e vale
-    \(V_c = 3b\) exatamente. Rodando Newton ali, o programa converge, mas gasta
-    <strong>36 iterações</strong> para um problema que longe do ponto crítico se resolve em
-    cinco, e ainda assim chega com erro relativo de \(6\times10^{-6}\), e não com os
-    \(10^{-16}\) de sempre.</p>
-    <p>A razão está na dedução da seção 3. Ali apareceu \(f'(r)\) no denominador da constante;
-    numa raiz de multiplicidade \(m\) a derivada <em>também</em> se anula em \(r\), a dedução
-    desmonta, e Newton volta a ser linear com taxa \(1-1/m\), que vale \(2/3\) para \(m=3\).
-    Raiz múltipla é o caso em que Newton deixa de valer a pena <em>sem dar aviso nenhum</em>: ele
-    converge, devagar, e o resultado parece bom.</p>
+    <span class="rotulo">Uma descoberta que mudou a seção 4</span>
+    <p>A primeira versão do programa demonstrava a não associatividade somando um vetor nas duas
+    ordens com <code>np.sum</code>, e obtinha <strong>o mesmo resultado</strong> nas duas, com
+    erro zero. O texto que eu tinha escrito dizia o contrário.</p>
+    <p>O motivo é que o <code>np.sum</code> não soma sequencialmente: ele soma por pares, o que
+    reduz o erro de \(O(n)\) para \(O(\log n)\) e, num vetor pequeno, o zera. A demonstração
+    passou a usar um laço explícito, e a soma por pares virou conteúdo, porque é o tipo de coisa
+    que a biblioteca faz por você sem avisar.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s9">9. Exercícios resolvidos</h2>
+  <h2 id="s7">7. Exercícios resolvidos</h2>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 2.1 · A lei de deslocamento de Wien</span>
-    <p>A lei de Planck, derivada em relação ao comprimento de onda e igualada a zero, leva a
-    \(5(1-e^{-x}) = x\) com \(x = hc/\lambda_{\max}k_BT\). Resolva, obtenha a constante de Wien e
-    confira contra o valor tabelado \(2{,}897771955\times10^{-3}\) m·K.</p>
+    <span class="rotulo">Exercício resolvido 2.1 · Onde a subtração estraga a conta</span>
+    <p>A função \(f(x) = \dfrac{1-\cos x}{x^2}\) tende a \(1/2\) quando \(x\to 0\). Calcule-a em
+    \(x = 10^{-4}\), \(10^{-6}\) e \(10^{-8}\) com a fórmula escrita assim, diga o que acontece,
+    e proponha uma forma estável.</p>
 
-    <p><strong>Localizar a raiz primeiro.</strong> Escreva \(g(x) = 5(1-e^{-x}) - x\). Note que
-    \(g(0) = 0\): a raiz \(x=0\) existe e é espúria, pois corresponde a
-    \(\lambda\to\infty\). A raiz que interessa é a outra. Como \(g(4) = 0{,}908\) e
-    \(g(6) = -1{,}012\), ela está em \([4,6]\).</p>
+    <p><strong>O diagnóstico.</strong> Para \(x\) pequeno, \(\cos x \approx 1 - x^2/2\), de modo
+    que \(\cos x\) está a uma distância \(x^2/2\) de 1. Em \(x=10^{-8}\), isso é
+    \(5\times10^{-17}\), que é <em>menor que o espaçamento da grade em 1</em>, igual a
+    \(2{,}2\times10^{-16}\). Logo \(\cos x\) é arredondado para exatamente 1, a subtração dá
+    zero, e \(f\) devolve 0 em vez de 0,5.</p>
 
-    <p><strong>Por Newton.</strong> Com \(g'(x) = 5e^{-x} - 1\), partindo de \(x_0 = 5\):</p>
-    <table>
-      <tr><th>\(n\)</th><th>\(x_n\)</th><th>\(g(x_n)\)</th></tr>
-      <tr><td>0</td><td>5,000000000</td><td>\(-3{,}369\times10^{-2}\)</td></tr>
-      <tr><td>1</td><td>4,965135696</td><td>\(-2{,}072\times10^{-5}\)</td></tr>
-      <tr><td>2</td><td>4,965114232</td><td>\(-8{,}036\times10^{-12}\)</td></tr>
-      <tr><td>3</td><td>4,965114232</td><td>\(8{,}9\times10^{-16}\)</td></tr>
-    </table>
-    <p>Três iterações, e a duplicação de dígitos é visível na coluna do resíduo: o expoente vai
-    de 2 para 5, de 5 para 12, e de 12 para o fim da precisão. Dobrar o número de dígitos
-    corretos é literalmente o que está acontecendo ali.</p>
+    <p>Em \(x=10^{-6}\) o cancelamento é parcial: \(1-\cos x \approx 5\times10^{-13}\), e desses
+    treze dígitos de afastamento só sobram cerca de quatro corretos, porque o erro absoluto de
+    \(\cos x\) é \(10^{-16}\). O resultado sai com quatro casas boas e o resto é lixo.</p>
 
-    <p><strong>A constante.</strong> De \(x = hc/\lambda_{\max}k_BT\) vem
-    \(\lambda_{\max}T = hc/(k_B x)\):</p>
-    <p>\[ b = \frac{hc}{k_B x} = \frac{(6{,}62607015\times10^{-34})(2{,}99792458\times10^{8})}
-       {(1{,}380649\times10^{-23})(4{,}965114232)} = 2{,}897771955\times10^{-3}\ \text{m}\cdot\text{K}. \]</p>
-    <p>O valor obtido é \(2{,}897771955185\times10^{-3}\), que concorda com o tabelado em
-    todos os seus dez dígitos. Não é coincidência: o valor tabelado <em>é</em> esta conta, e
-    refazê-la serve para conferir que o método, as constantes e a raiz estão todos certos.</p>
+    <p><strong>A forma estável.</strong> Use a identidade \(1-\cos x = 2\sen^2(x/2)\):</p>
+    <p>\[ f(x) = \frac{2\sen^2(x/2)}{x^2} = \frac{1}{2}\left(\frac{\sen(x/2)}{x/2}\right)^2. \]</p>
+    <p>Agora não há subtração de números próximos em lugar nenhum. O seno de um número pequeno
+    é calculado com erro relativo pequeno, elevar ao quadrado preserva o erro relativo, e a
+    divisão também. O resultado tem quinze dígitos corretos em toda a faixa.</p>
 
     <div class="bloco alerta">
-      <span class="rotulo">O cuidado com a raiz espúria</span>
-      <p>Partindo de \(x_0 = 1\), Newton converge para \(x = 0\), que é raiz legítima da equação
-      e resposta errada do problema de física. Nenhuma propriedade matemática distingue as duas:
-      quem distingue é quem montou o problema. Essa é a diferença entre resolver a equação e
-      resolver o problema, e é a razão de localizar a raiz com um esboço antes de chamar o
-      método.</p>
-    </div>
-  </div>
-
-  <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 2.2 · Por que a raiz dupla estraga Newton</span>
-    <p>Mostre que, numa raiz de multiplicidade \(m\), Newton converge linearmente com taxa
-    \(1 - 1/m\), e proponha a correção.</p>
-
-    <p><strong>Montagem.</strong> Multiplicidade \(m\) quer dizer
-    \(f(x) = (x-r)^m h(x)\) com \(h(r)\neq 0\). Derivando,</p>
-    <p>\[ f'(x) = m(x-r)^{m-1}h(x) + (x-r)^m h'(x) = (x-r)^{m-1}\bigl[m\,h(x) + (x-r)h'(x)\bigr]. \]</p>
-
-    <p><strong>O passo de Newton.</strong> Dividindo,</p>
-    <p>\[ \frac{f(x)}{f'(x)} = \frac{(x-r)h(x)}{m\,h(x) + (x-r)h'(x)}, \]</p>
-    <p>e subtraindo \(r\) dos dois lados de \(x_{n+1} = x_n - f/f'\), com \(e = x-r\):</p>
-    <p>\[ e_{n+1} = e_n\left[1 - \frac{h(x_n)}{m\,h(x_n) + e_n h'(x_n)}\right]
-       \;\xrightarrow[\;e_n\to 0\;]{}\; e_n\left(1 - \frac{1}{m}\right). \]</p>
-
-    <p><strong>Leitura.</strong> A convergência é linear com taxa \(1-1/m\): vale \(1/2\) para
-    raiz dupla e \(2/3\) para tripla. Com \(m=1\) a taxa é zero, que é a maneira de a conta
-    dizer que a convergência é mais rápida que linear, isto é, quadrática.</p>
-
-    <p><strong>A correção.</strong> O fator \(1-1/m\) some se o passo for multiplicado por
-    \(m\):</p>
-    <p>\[ x_{n+1} = x_n - m\,\frac{f(x_n)}{f'(x_n)}, \]</p>
-    <p>e a convergência quadrática volta. O problema é que isso exige conhecer \(m\) de
-    antemão. Quando não se conhece, aplica-se Newton a \(u(x) = f(x)/f'(x)\), que tem raiz
-    <em>simples</em> em \(r\) seja qual for a multiplicidade de \(f\). O preço é precisar de
-    \(f''\).</p>
-
-    <div class="bloco def">
-      <span class="rotulo">Como perceber isso num programa de verdade</span>
-      <p>Raiz múltipla não anuncia que chegou. O primeiro sintoma é Newton convergir em vinte
-      ou trinta iterações em vez de cinco.</p>
-      <p>O segundo é mais sério e não se conserta trocando de método. Perto de uma raiz dupla
-      vale \(f(x)\approx C(x-r)^2\), de modo que \(f\) cai abaixo do erro de arredondamento
-      já a uma distância \(\sqrt{\varepsilon/C}\) da raiz, e dali para dentro ela avalia como
-      zero. Avaliando \((x-1)^2\) na forma expandida \(x^2-2x+1\), que é como uma função
-      real chegaria, o resultado é <strong>exatamente zero</strong> para todo \(x\) a menos de
-      \(1{,}05\times10^{-8}\) de 1, contra \(\sqrt{\varepsilon}=1{,}49\times10^{-8}\).</p>
-      <p>Há portanto um intervalo inteiro de largura \(10^{-8}\) em que a função é
-      indistinguível de zero, e nenhum método, por melhor que seja, localiza a raiz melhor do
-      que isso. Com raiz tripla o limite piora para
-      \(\varepsilon^{1/3}\approx 6\times10^{-6}\), que é exatamente a ordem do erro com que
-      o programa chegou ao volume crítico de van der Waals.</p>
+      <span class="rotulo">A moral, que é a mesma da seção 5</span>
+      <p>As duas expressões são idênticas em álgebra e completamente diferentes em ponto
+      flutuante. A diferença não está na precisão com que se calcula, e sim em <em>quais
+      operações aparecem no caminho</em>. Procure subtrações de números próximos: é quase sempre
+      ali que a conta se perde.</p>
     </div>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s10">10. Exercícios propostos</h2>
+  <h2 id="s8">8. Exercícios propostos</h2>
 
   <div class="bloco def">
     <span class="rotulo">Para resolver</span>
     <ol>
-      <li><b>2.1</b> A equação de Kepler, \(M = E - e\sen E\), dá a anomalia excêntrica \(E\) a
-      partir da anomalia média \(M\). Resolva-a por Newton para a órbita de Halley
-      (\(e = 0{,}967\)) com \(M = 0{,}1\) rad, partindo de \(E_0 = M\). Conte as iterações,
-      repita com \(e = 0{,}5\) e explique a diferença. Dica: para \(e\) perto de 1 o chute
-      \(E_0 = M\) é ruim, e \(E_0 = \pi\) funciona melhor.</li>
+      <li><b>2.1</b> Meça o épsilon da máquina em <code>float32</code> usando
+      <code>np.float32</code> e confirme que vale \(2^{-23}\). Quantos dígitos decimais isso
+      representa? Refaça o teste de \(0{,}1+0{,}2\) em precisão simples e compare a diferença
+      com o espaçamento local da grade.</li>
 
-      <li><b>2.2</b> Implemente o método da <em>falsa posição</em>, que é a bisseção com o ponto
-      médio trocado pela interseção da secante com o eixo. Teste em \(x^3-2x-5\) e em
-      \(x^{10}-1\) no intervalo \([0;\,1{,}3]\). No segundo caso ele fica muito mais lento que a
-      bisseção: descubra por quê desenhando os intervalos sucessivos, e proponha a correção
-      conhecida como método de Illinois.</li>
+      <li><b>2.2</b> A série harmônica \(\sum 1/k\) diverge, mas somada em
+      <code>float32</code> da esquerda para a direita ela <em>para de crescer</em> a partir de
+      certo \(k\). Encontre esse \(k\) numericamente e explique por que ele aparece, em termos
+      do espaçamento da grade na soma parcial. Em seguida, some de trás para frente e mostre que
+      o resultado é diferente.</li>
 
-      <li><b>2.3</b> Meça a ordem de convergência do método da falsa posição no exemplo em que
-      ele vai bem e naquele em que vai mal. Use o mesmo ajuste por mínimos quadrados do programa
-      da aula, e explique o número que encontrar no segundo caso.</li>
+      <li><b>2.3</b> Escreva duas funções para \(e^{x}\) com \(x\) negativo e grande em módulo:
+      uma somando a série de Taylor diretamente, e outra calculando \(1/e^{|x|}\). Compare as
+      duas com <code>math.exp</code> em \(x = -1, -10, -20, -40\) e explique o que dá errado na
+      primeira. Quantos termos a série precisaria para funcionar em \(x=-40\), e por que isso
+      não resolve?</li>
 
-      <li><b>2.4</b> A equação \(\tg x = x\) tem infinitas raízes, uma em cada intervalo entre
-      assíntotas consecutivas. Escreva um programa que ache as dez primeiras raízes positivas e
-      confira que elas se aproximam de \((n+\tfrac12)\pi\). Cuidado com as assíntotas: diga como
-      você garantiu que o intervalo de busca não continha nenhuma.</li>
+      <li><b>2.4</b> A variância de uma amostra pode ser calculada por
+      \(\frac{1}{n}\sum x_i^2 - \bar{x}^2\) ou por \(\frac{1}{n}\sum(x_i-\bar{x})^2\). As duas
+      são iguais em álgebra. Gere mil números com média \(10^{6}\) e desvio-padrão 1, calcule a
+      variância pelas duas fórmulas e diga qual delas erra e por quê. Estime o número de
+      condição da primeira.</li>
 
-      <li><b>2.5</b> Implemente o método de Halley,
-      \(x_{n+1} = x_n - \dfrac{2ff'}{2f'^2 - ff''}\), que é de ordem 3. Meça a ordem no mesmo
-      exemplo da aula e verifique que dá 3. Em seguida compare com Newton <em>por avaliação de
-      função</em>, contando que Halley gasta três por passo, e diga qual dos dois você usaria.</li>
+      <li><b>2.5</b> Mostre que a associatividade falha também para a multiplicação, construindo
+      três números \(a, b, c\) tais que \((a\cdot b)\cdot c \neq a\cdot(b\cdot c)\). Dica: use o
+      overflow ou o underflow, e não o arredondamento.</li>
 
-      <li><b>2.6</b> Para a cúbica \(x^3-5x\) do widget, reproduza numericamente a figura das
-      bacias de atração: varra \(x_0\) de \(-3\) a 3 e registre a qual raiz Newton leva. Depois
-      amplie a região em torno de \(x = 1{,}29\) por um fator mil e mostre que a estrutura se
-      repete. Em meia página, diga o que isso significa para a confiabilidade de Newton.</li>
-
-      <li><b>2.7</b> A equação de estado de Redlich-Kwong,
-      \(p = \dfrac{RT}{V-b} - \dfrac{a}{\sqrt{T}\,V(V+b)}\), é mais precisa que van der Waals.
-      Resolva-a para o volume molar do CO₂ nas mesmas condições do programa da aula e compare as
-      duas. Para o CO₂, \(a = 64{,}6\) Pa·m⁶·K<sup>1/2</sup>/mol² e
-      \(b = 2{,}97\times10^{-5}\) m³/mol.</li>
-
-      <li><b>2.8</b> Em meia página: um colega escreveu um Newton que converge em 28 iterações e
-      concluiu que o método é ruim. Liste as quatro causas possíveis, diga que teste distingue
-      cada uma das outras, e qual delas é a mais provável.</li>
+      <li><b>2.8</b> Em meia página, e sem fórmulas: um colega diz que o problema de ponto
+      flutuante se resolve usando <code>decimal</code> em tudo. Responda, dizendo em que ele tem
+      razão, em que não tem, e qual é o custo da proposta. Meça esse custo cronometrando a soma
+      de um milhão de números nas duas aritméticas.</li>
     </ol>
   </div>
 
   <nav class="nav-aulas">
-    <a href="aula01.html"><small>Aula anterior</small>← 1. Ponto flutuante</a>
-    <a class="prox" href="aula03.html"><small>Próxima aula</small>3. Interpolação e ajuste →</a>
+    <a href="index.html"><small>Voltar</small>← Início</a>
+    <a class="prox" href="aula05.html"><small>Próxima aula</small>5. Newton →</a>
   </nav>
 
 </main>
@@ -575,6 +433,6 @@
   <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
 </footer>
 
-<script src="assets/js/widgets.js?v=202611220937"></script>
+<script src="assets/js/widgets.js?v=202611221002"></script>
 </body>
 </html>

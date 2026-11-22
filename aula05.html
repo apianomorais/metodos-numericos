@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aula 5: Matemática simbólica e projeto integrador | Métodos Numéricos</title>
+<title>Aula 5: Newton-Raphson e a secante | Métodos Numéricos</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
-<script src="assets/js/comum.js?v=202611220937"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221002">
+<script src="assets/js/comum.js?v=202611221002"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -17,13 +17,14 @@
     <nav class="menu">
       <a href="index.html">Início</a>
       <span class="grupo">Erro</span>
-      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
-      <span class="grupo">Métodos</span>
-      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
-      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
-      <a href="aula04.html" class="num" title="Aula 4: Integração numérica">4</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num ativo" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
       <span class="grupo">Fechamento</span>
-      <a href="aula05.html" class="num ativo" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
     </nav>
   </div>
 </header>
@@ -33,710 +34,427 @@
 <aside class="lateral">
   <h4>Nesta aula</h4>
   <ol>
-    <li><a href="#s1">1. Dois mundos</a></li>
-    <li><a href="#s2">2. SymPy em dez minutos</a></li>
-    <li><a href="#s3">3. As fórmulas deste curso, derivadas pelo computador</a></li>
-    <li><a href="#s4">4. Simplificar não é inocente</a></li>
-    <li><a href="#s5">5. lambdify, e quanto custa a ponte</a></li>
-    <li><a href="#s6">6. Onde o simbólico desiste</a></li>
-    <li><a href="#s7">7. O projeto: o pêndulo de amplitude grande</a></li>
-    <li><a href="#s8">8. No Spyder</a></li>
-    <li><a href="#s9">9. Exercícios resolvidos</a></li>
-    <li><a href="#s10">10. Exercícios propostos</a></li>
-    <li><a href="#s11">11. O que este curso tentou ensinar</a></li>
+    <li><a href="#s1">1. Newton-Raphson: trocar a função pela tangente</a></li>
+    <li><a href="#s2">2. A ordem de convergência, medida</a></li>
+    <li><a href="#s3">3. A secante, e a razão áurea</a></li>
+    <li><a href="#s4">4. As três maneiras de Newton falhar</a></li>
+    <li><a href="#s5">5. O critério de parada que engana</a></li>
+    <li><a href="#s6">6. No Spyder</a></li>
+    <li><a href="#s7">7. Exercícios resolvidos</a></li>
+    <li><a href="#s8">8. Exercícios propostos</a></li>
   </ol>
 </aside>
 
 <main class="conteudo">
 
-  <p class="chapeu">Aula 5 · Fechamento</p>
-  <h1>Matemática simbólica e projeto integrador</h1>
-  <p class="subtitulo">Álgebra simbólica e cálculo numérico resolvem problemas diferentes, e a combinação útil não é escolher um dos dois. É usar o simbólico para preparar a conta e para conferir a resposta, e o numérico para obtê-la. O projeto desta aula mostra as quatro aulas anteriores trabalhando juntas num problema só, que é como elas sempre aparecem fora da sala.</p>
+  <p class="chapeu">Aula 5 · Raízes de equações</p>
+  <h1>Newton-Raphson e a secante</h1>
+  <p class="subtitulo">A bisseção da aula anterior não falha nunca e é lenta. Newton dobra o número de dígitos corretos a cada passo e falha de três maneiras diferentes. Escolher entre os dois não é questão de gosto: é saber o que se tem em mãos, e o que se pode garantir.</p>
 
   <div class="bloco def">
     <span class="rotulo">Objetivos</span>
     <ul>
-      <li>Usar o SymPy para derivar, integrar, expandir em série e resolver em símbolos;</li>
-      <li>Obter as fórmulas de erro das aulas 3 e 4 sem aceitá-las de cabeça;</li>
-      <li>Reconhecer que simplificar uma expressão pode arruiná-la numericamente;</li>
-      <li>Atravessar do simbólico para o numérico com <code>lambdify</code>, e saber o custo;</li>
-      <li>Identificar os três tipos de problema em que o simbólico não tem resposta;</li>
-      <li>Resolver um problema completo em que as quatro aulas anteriores são necessárias.</li>
+      <li>Deduzir a convergência quadrática de Newton a partir da série de Taylor;</li>
+      <li>Medir a ordem de convergência de um método a partir dos próprios erros;</li>
+      <li>Implementar a secante e explicar por que a ordem dela é a razão áurea;</li>
+      <li>Reconhecer as três maneiras de Newton falhar e saber o que fazer em cada uma;</li>
+      <li>Escrever um critério de parada que não engane;</li>
+      <li>Resolver a equação de van der Waals para o volume molar.</li>
     </ul>
   </div>
 
   <hr class="linha">
 
   <!-- ================================================== -->
-  <h2 id="s1">1. Dois mundos</h2>
+  <h2 id="s1">1. Newton-Raphson: trocar a função pela tangente</h2>
 
-  <p>Até aqui, tudo neste curso foi numérico. Toda quantidade que apareceu era um
-  <code>float64</code>, com os 53 bits de mantissa da aula 1, e todo método produzia uma sequência
-  de números que se esperava convergir para a resposta. É assim que o computador resolve a maior
-  parte dos problemas de física, e é por isso que o curso começou por aí.</p>
+  <p>A aula 4 resolveu o problema das raízes de um jeito que nunca falha e nunca acelera: um bit
+  por iteração, do primeiro ao último passo, porque a bisseção olha apenas para o sinal de
+  \(f\). Esta aula troca a garantia pela velocidade, usando a informação que a bisseção
+  descarta.</p>
 
-  <p>Existe uma segunda maneira de o computador fazer matemática, e ela não substitui a primeira.
-  Um sistema de álgebra simbólica manipula <em>expressões</em>, e não números. Quando você pede
-  a derivada de \(\sen(x^2)\), ele não avalia nada: ele aplica a regra da cadeia e devolve a
-  expressão \(2x\cos(x^2)\), que é a resposta exata, válida para todo \(x\), e que não tem erro
-  de arredondamento nenhum porque não houve arredondamento.</p>
+  <p>A ideia é a mais produtiva do cálculo numérico, e reaparece nas aulas 9 e 10: quando um
+  problema é difícil, troque a função pela sua aproximação linear, resolva o problema linear,
+  que é fácil, e repita.</p>
 
-  <p>A pergunta natural, e que todo aluno faz nesta altura, é por que então estudamos métodos
-  numéricos. A resposta tem três partes, e as três aparecem nesta aula.</p>
+  <p>Perto de \(x_n\), a reta tangente é \(y = f(x_n) + f'(x_n)(x - x_n)\). Ela cruza o eixo em</p>
 
-  <div class="bloco def">
-    <span class="rotulo">Por que o simbólico não resolve tudo</span>
-    <ol>
-      <li><strong>Para a maioria dos problemas não existe fórmula.</strong> Não é que o programa
-      seja fraco: está demonstrado que a fórmula não existe. A equação \(x^5-x-1=0\) não tem
-      solução por radicais, e \(\int e^{-x^2}/(1+x^3)\,dx\) não tem primitiva elementar.</li>
-      <li><strong>Quando existe, às vezes não ajuda.</strong> A resposta de
-      \(\int_0^1 e^{-x^2}dx\) é \(\sqrt{\pi}\,\mathrm{erf}(1)/2\), o que é correto e inútil
-      sozinho: para ter um número, alguém ainda precisa avaliar \(\mathrm{erf}\),
-      numericamente.</li>
-      <li><strong>Quando existe e ajuda, pode ser lenta ou instável.</strong> A fórmula exata
-      pode ser catastroficamente imprecisa em ponto flutuante, e a seção 7 traz um caso em que a
-      derivada simbólica exata é pior que uma série truncada em três termos.</li>
-    </ol>
-  </div>
+  <p>\[ \boxed{\;x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}.\;} \]</p>
 
-  <p>O que o simbólico faz bem é outra coisa, e é valiosa. Ele deriva sem errar sinal, expande
-  em série sem errar coeficiente, e fornece o valor exato contra o qual o método numérico pode
-  ser conferido. Todo programa deste curso foi escrito com uma seção de verificação, e em vários
-  deles a referência de comparação veio de uma conta simbólica. É esse o papel dele aqui:
-  <strong>preparar e conferir</strong>.</p>
+  <p>É isso. O widget abaixo desenha a tangente e o ponto onde ela corta o eixo, passo a passo,
+  e vale usá-lo antes de ler a dedução que vem em seguida.</p>
 
-  <!-- ================================================== -->
-  <h2 id="s2">2. SymPy em dez minutos</h2>
+  <div data-widget="newton"></div>
 
-  <p>O SymPy vem com o Anaconda e não precisa de instalação. A diferença de tudo que viemos
-  fazendo está na primeira linha: antes de qualquer coisa, declaram-se os símbolos.</p>
+  <h3>De onde vem a convergência quadrática</h3>
 
-  <pre><code>import sympy as sp
+  <p>Escreva o erro como \(e_n = x_n - r\) e expanda \(f\) em torno de \(x_n\), avaliando em
+  \(r\), onde \(f\) se anula:</p>
 
-x, y = sp.symbols('x y')
-n = sp.symbols('n', integer=True, positive=True)</code></pre>
+  <p>\[ 0 = f(r) = f(x_n) - f'(x_n)e_n + \tfrac{1}{2}f''(\xi)e_n^2, \]</p>
 
-  <p>A partir daí, uma expressão em <code>x</code> é um objeto do SymPy, e não um número. As
-  operações mais usadas são poucas:</p>
+  <p>com \(\xi\) entre \(r\) e \(x_n\). Dividindo por \(f'(x_n)\) e reconhecendo o passo de
+  Newton:</p>
 
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>o que se quer</th><th>como se pede</th><th>o que volta</th></tr>
-    <tr><td>derivar</td><td><code>sp.diff(f, x)</code></td><td>expressão</td></tr>
-    <tr><td>derivar \(k\) vezes</td><td><code>sp.diff(f, x, k)</code></td><td>expressão</td></tr>
-    <tr><td>integrar</td><td><code>sp.integrate(f, x)</code></td><td>expressão, ou a integral intacta</td></tr>
-    <tr><td>integral definida</td><td><code>sp.integrate(f, (x, a, b))</code></td><td>expressão</td></tr>
-    <tr><td>série de Taylor</td><td><code>sp.series(f, x, 0, 6)</code></td><td>expressão com \(O(x^6)\)</td></tr>
-    <tr><td>resolver</td><td><code>sp.solve(eq, x)</code></td><td>lista de soluções</td></tr>
-    <tr><td>limite</td><td><code>sp.limit(f, x, 0)</code></td><td>expressão</td></tr>
-    <tr><td>substituir</td><td><code>f.subs(x, 2)</code></td><td>expressão</td></tr>
-    <tr><td>virar número</td><td><code>float(f)</code> ou <code>f.evalf(30)</code></td><td>número</td></tr>
-    <tr><td>virar função NumPy</td><td><code>sp.lambdify(x, f, 'numpy')</code></td><td>função</td></tr>
-  </table>
-  </div>
-
-  <div class="bloco alerta">
-    <span class="rotulo">Os três erros de quem está começando</span>
-    <p><strong>Escrever <code>1/3</code> no meio de uma expressão simbólica.</strong> O Python
-    avalia isso como <code>0.3333333333333333</code> antes de o SymPy ver, e a exatidão se
-    perdeu na primeira linha. O certo é <code>sp.Rational(1,3)</code> ou
-    <code>sp.S(1)/3</code>.</p>
-    <p><strong>Usar <code>math.sin</code> em vez de <code>sp.sin</code>.</strong> O primeiro
-    exige um número e falha com um símbolo; e se o argumento por acaso for numérico, ele devolve
-    um <code>float</code>, contaminando a expressão inteira.</p>
-    <p><strong>Chamar <code>subs</code> dentro de um laço.</strong> Funciona, e é a maneira mais
-    lenta possível de avaliar uma função. A seção 5 mede o quanto.</p>
-  </div>
-
-  <!-- ================================================== -->
-  <h2 id="s3">3. As fórmulas deste curso, derivadas pelo computador</h2>
-
-  <p>Nas aulas 3 e 4, várias fórmulas de erro foram apresentadas como resultado de uma expansão
-  de Taylor que eu fiz na lousa e você aceitou. Vale refazê-las aqui, porque a conta tem três
-  linhas e porque o resultado contém uma surpresa que só se enxerga bem quando o computador a
-  produz.</p>
-
-  <p>A ideia é escrever a série de Taylor com coeficientes simbólicos \(f_0, f_1, f_2, \ldots\)
-  no lugar das derivadas, aplicar a regra de integração a essa série, integrar a série de
-  verdade, e subtrair:</p>
-
-  <pre><code>u, h = sp.symbols('u h')
-taylor = sum(sp.Symbol('f_%d' % j) * u**j / sp.factorial(j) for j in range(7))
-
-erro_trapezio = sp.expand(h/2 * (taylor.subs(u,0) + taylor.subs(u,h))
-                          - sp.integrate(taylor, (u, 0, h)))
-erro_simpson  = sp.expand(h/3 * (taylor.subs(u,0) + 4*taylor.subs(u,h)
-                                 + taylor.subs(u,2*h))
-                          - sp.integrate(taylor, (u, 0, 2*h)))</code></pre>
-
-  <p>O que sai:</p>
-
-  <p>\[ \text{trapézio: } \frac{f_2h^3}{12} + \frac{f_3h^4}{24} + \frac{f_4h^5}{80}
-     + \frac{f_5h^6}{360} + \frac{f_6h^7}{2016} \]</p>
-  <p>\[ \text{Simpson: } \frac{f_4h^5}{90} + \frac{f_5h^6}{90} + \frac{23f_6h^7}{3780} \]</p>
-
-  <p>A primeira linha confirma o \(h^3f''/12\) por painel da aula 4, que composto dá \(h^2\). A
-  segunda confirma o \(h^5f^{(4)}/90\), que composto dá \(h^4\). Nenhuma das duas foi digitada:
-  elas saíram da subtração.</p>
-
-  <div class="bloco ex">
-    <span class="rotulo">O grau que passa de graça, visto como uma ausência</span>
-    <p>O mais interessante na segunda linha é o que não está lá. A série de Simpson começa em
-    \(h^5\): os coeficientes de \(h^3\) e de \(h^4\) são <strong>zero</strong>, e o programa os
-    imprime como zero em vez de afirmar que são.</p>
-    <p>Na seção 3 da aula 4, esse cancelamento foi argumentado por simetria, e o argumento
-    estava certo. Mas há uma diferença entre demonstrar que um termo se cancela e ver que ele
-    não aparece. Aqui ele não aparece: a conta foi feita sem nenhuma hipótese sobre simetria, e
-    o termo em \(h^4\) simplesmente sobrou com coeficiente nulo.</p>
-  </div>
-
-  <p>A mesma receita resolve a derivada numérica, que este curso só usou de passagem, quando a
-  aula 2 conferiu a derivada analítica de Newton contra uma diferença central. Trocando a regra
-  de integração pela fórmula de diferenças:</p>
-
-  <p>\[ \frac{f(h)-f(0)}{h} - f_1 = \frac{f_2h}{2} + \frac{f_3h^2}{6}
-     + \frac{f_4h^3}{24} + \cdots \]</p>
-  <p>\[ \frac{f(h)-f(-h)}{2h} - f_1 = \frac{f_3h^2}{6} + \frac{f_5h^4}{120} \]</p>
-
-  <p>A progressiva começa em \(h\) e a central em \(h^2\), e a central só tem potências pares.
-  É o mesmo cancelamento por simetria de Simpson, reaparecendo na derivada: trocar \(h\) por
-  \(-h\) inverte o sinal da fórmula central, e um termo de potência ímpar de \(h\) não
-  sobreviveria a essa troca.</p>
-
-  <div class="bloco alerta">
-    <span class="rotulo">Mas a diferença central não é melhor sempre</span>
-    <p>Essas séries descrevem só o erro de truncamento. O erro total da derivada numérica tem
-    uma segunda parte, de arredondamento, que <em>cresce</em> quando \(h\) diminui, porque
-    \(f(h)-f(-h)\) é uma subtração de números próximos, dividida por um número pequeno. É a
-    aula 1 outra vez, e o \(h\) ótimo da diferença central fica perto de
-    \(\varepsilon^{1/3}\approx 6\times10^{-6}\), não no menor \(h\) que a máquina aceita.</p>
-  </div>
-
-  <!-- ================================================== -->
-  <h2 id="s4">4. Simplificar não é inocente</h2>
-
-  <p>O SymPy tem um arsenal de funções que reescrevem uma expressão: <code>expand</code>,
-  <code>factor</code>, <code>simplify</code>, <code>together</code>, <code>cancel</code>,
-  <code>trigsimp</code>. Todas preservam o valor matemático da expressão, e é fácil concluir daí
-  que a escolha entre as formas é questão de gosto. Não é.</p>
-
-  <p>Tome \((x-1)^8\) e expanda:</p>
-
-  <p>\[ (x-1)^8 = x^8 - 8x^7 + 28x^6 - 56x^5 + 70x^4 - 56x^3 + 28x^2 - 8x + 1. \]</p>
-
-  <p>As duas formas são a mesma função, e o próprio SymPy certifica isso:
-  <code>simplify(fatorada - expandida)</code> devolve <code>0</code>. Avaliando as duas em
-  <code>float64</code> perto de \(x=1\):</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(x\)</th><th>forma fatorada</th><th>forma expandida</th><th>erro relativo</th></tr>
-    <tr><td>1,01</td><td>\(1{,}0\times10^{-16}\)</td><td>\(-1{,}2\times10^{-14}\)</td>
-        <td>\(1{,}3\times10^{2}\)</td></tr>
-    <tr><td>1,001</td><td>\(1{,}0\times10^{-24}\)</td><td>\(-1{,}1\times10^{-14}\)</td>
-        <td>\(1{,}1\times10^{10}\)</td></tr>
-    <tr><td>1,0001</td><td>\(1{,}0\times10^{-32}\)</td><td>\(-1{,}8\times10^{-15}\)</td>
-        <td>\(1{,}8\times10^{17}\)</td></tr>
-  </table>
-  </div>
-
-  <p>A coluna da direita não erra o último dígito. Ela erra o <strong>sinal</strong>, e erra
-  dezessete ordens de grandeza. A razão é a de sempre: a forma expandida soma e subtrai parcelas
-  da ordem de 1 para produzir um resultado da ordem de \(10^{-32}\), e nenhuma soma de
-  <code>float64</code> sabe produzir \(10^{-32}\) a partir de números da ordem de 1. Essa é a
-  aula 1 inteira num exemplo de uma linha.</p>
+  <p>\[ \frac{f(x_n)}{f'(x_n)} = e_n - \frac{f''(\xi)}{2f'(x_n)}e_n^2
+     \quad\Longrightarrow\quad
+     e_{n+1} = e_n - \frac{f(x_n)}{f'(x_n)} = \frac{f''(\xi)}{2f'(x_n)}\,e_n^2. \]</p>
 
   <div class="bloco def">
-    <span class="rotulo">A regra prática</span>
-    <p><code>expand</code>, <code>simplify</code> e companhia são operações <em>algébricas</em>,
-    e a álgebra não sabe que existe aritmética de precisão finita. Depois de simplificar, confira
-    numericamente perto dos pontos onde a expressão é pequena, que é onde a diferença aparece.</p>
-    <p>E quando as duas formas discordarem, confie na que <strong>não</strong> subtrai: produto,
-    forma fatorada, forma de Horner. Foi isso que a aula 2 fez ao reescrever a fórmula de
-    Bhaskara, e é a mesma decisão aqui.</p>
+    <span class="rotulo">O resultado</span>
+    <p>\[ |e_{n+1}| \approx \left|\frac{f''(r)}{2f'(r)}\right|\,|e_n|^2. \]</p>
+    <p>O erro novo é proporcional ao <strong>quadrado</strong> do erro velho. Em termos de
+    dígitos: se \(x_n\) tem \(d\) dígitos corretos, \(x_{n+1}\) tem cerca de \(2d\). A sequência
+    típica de erros é \(10^{-1}\), \(10^{-2}\), \(10^{-4}\), \(10^{-8}\), \(10^{-16}\), e aí
+    acabou, porque não há mais dígitos na máquina.</p>
   </div>
+
+  <p>Daí a regra de bolso: <strong>Newton converge em cinco ou seis iterações, ou não
+  converge</strong>. Se o seu programa está na vigésima iteração, alguma coisa está errada, e a
+  seção 4 lista o que pode ser.</p>
+
+  <p>A dedução deixa visíveis as duas hipóteses que serão cobradas depois. Foi preciso dividir
+  por \(f'(x_n)\), que portanto não pode ser zero nem muito pequeno; e foi preciso truncar
+  Taylor no segundo termo, o que só é legítimo se \(e_n\) já for pequeno. As duas falham
+  exatamente nos casos da seção 6.</p>
 
   <!-- ================================================== -->
-  <h2 id="s5">5. lambdify, e quanto custa a ponte</h2>
+  <h2 id="s2">2. A ordem de convergência, medida</h2>
 
-  <p>Obtida a expressão simbólica, falta avaliá-la em muitos pontos, que é o que um gráfico, um
-  ajuste ou uma integração numérica precisam. A maneira errada de fazer isso é a mais óbvia:</p>
+  <p>Dizer que um método é quadrático é uma afirmação verificável, e verificá-la é bom hábito:
+  ela também detecta derivada escrita errada, que é o erro mais comum ao programar Newton.</p>
 
-  <pre><code>for v in X:                      # NÃO faça isto
-    y.append(float(expr.subs(x, v)))</code></pre>
-
-  <p>A maneira certa é pedir ao SymPy que escreva uma função Python:</p>
-
-  <pre><code>f = sp.lambdify(x, expr, 'numpy')
-Y = f(X)                         # X é um array inteiro</code></pre>
-
-  <p>A diferença medida, com 200 mil pontos de
-  \(\sen x\,e^{-x^2/2}+\sqrt{1+x^2}\):</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>rota</th><th>tempo</th></tr>
-    <tr><td><code>subs</code> + <code>float</code>, ponto a ponto</td><td>97 s</td></tr>
-    <tr><td><code>lambdify</code> + NumPy</td><td>0,0044 s</td></tr>
-    <tr><td>NumPy escrito à mão</td><td>0,0023 s</td></tr>
-  </table>
+  <div class="bloco def">
+    <span class="rotulo">Definição</span>
+    <p>Um método tem <strong>ordem \(p\)</strong> se, para \(n\) grande,</p>
+    <p>\[ |e_{n+1}| \approx C\,|e_n|^{p}. \]</p>
+    <p>Com \(p=1\) a convergência é linear e \(C\) é a taxa, que precisa ser menor que 1. Com
+    \(p=2\) é quadrática, e aí o valor de \(C\) quase não importa.</p>
   </div>
 
-  <p>São quatro ordens de grandeza entre a primeira linha e a segunda. Os tempos absolutos
-  dependem da máquina; a razão entre eles, muito pouco.</p>
+  <p>Tomando logaritmos, \(\log|e_{n+1}| \approx \log C + p\log|e_n|\): os pontos
+  \((\log|e_n|, \log|e_{n+1}|)\) caem numa reta de inclinação \(p\). Medir a ordem é ajustar
+  essa reta.</p>
+
+  <div class="bloco alerta">
+    <span class="rotulo">Dois cuidados que o programa teve de tomar</span>
+    <p><strong>O piso de precisão.</strong> Quando o erro chega perto de
+    \(\varepsilon_{\text{máq}}\), ele para de cair e passa a oscilar no arredondamento. As
+    razões calculadas ali não medem convergência, medem ruído, e precisam ser descartadas. O
+    programa corta a janela no primeiro erro abaixo de cem vezes o épsilon local.</p>
+    <p><strong>A razão entre dois logaritmos consecutivos não serve para todo método.</strong>
+    É a fórmula que aparece nos livros e funciona bem para Newton. Para a bisseção ela
+    fracassa, porque o erro não cai por um fator fixo: o ponto médio às vezes calha de cair
+    quase em cima da raiz, o erro despenca, e no passo seguinte volta a subir. As estimativas
+    individuais que saem disso são 1,70, −0,03, −71,89, −0,79… Nenhuma vale sozinha. Ajustar
+    a reta por mínimos quadrados usa todos os pontos e faz a média do ruído.</p>
+  </div>
 
   <div class="bloco ex">
-    <span class="rotulo">E o resultado é o mesmo bit</span>
-    <p>A dúvida que sempre vem a seguir é se <code>lambdify</code> entrega uma versão
-    aproximada ou mais lenta do NumPy. Não entrega: o teste do programa compara os dois arrays
-    com <code>np.array_equal</code>, que é igualdade exata e não tolerância, e eles são iguais.</p>
-    <p>O motivo é simples quando se olha o que <code>lambdify</code> faz. Ela não interpreta a
-    expressão a cada chamada; ela gera o código-fonte da função NumPy que você escreveria, chama
-    <code>exec</code> uma vez, e sai do caminho. Quem avalia depois é o NumPy, sozinho.</p>
+    <span class="rotulo">O que o programa mede</span>
+    <table>
+      <tr><th>Método</th><th>Pontos úteis</th><th>Ordem medida</th><th>Prevista</th><th>Erro</th></tr>
+      <tr><td>bisseção</td><td>41</td><td>0,9739</td><td>1</td><td>2,6 %</td></tr>
+      <tr><td>Newton</td><td>5</td><td>1,9366</td><td>2</td><td>3,2 %</td></tr>
+      <tr><td>secante</td><td>7</td><td>1,6198</td><td>1,6180</td><td>0,1 %</td></tr>
+    </table>
+    <p>Para a bisseção a ordem não é o número interessante, porque toda convergência linear tem
+    ordem 1. O que distingue uma linear de outra é a <strong>taxa</strong>, e ela sai da
+    inclinação de \(\log|e_n|\) contra \(n\): o programa mede <strong>0,500750</strong>, contra
+    o \(1/2\) previsto pelo corte do intervalo ao meio.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s6">6. Onde o simbólico desiste</h2>
+  <h2 id="s3">3. A secante, e a razão áurea</h2>
 
-  <p>Três situações, e o que fazer em cada uma.</p>
+  <p>Newton exige \(f'\), e nem sempre se tem. A função pode vir de uma tabela de medidas, de
+  outro programa, ou de uma expressão cuja derivada é longa o bastante para que escrevê-la à
+  mão seja um convite ao erro.</p>
 
-  <p><strong>(a) A equação que não tem fórmula.</strong> Peça
-  <code>sp.solve(x**5 - x - 1, x)</code> e o SymPy devolve cinco objetos <code>CRootOf</code>,
-  que significam "a \(k\)-ésima raiz deste polinômio", e não uma expressão. Isso não é fraqueza
-  do programa: Abel e Ruffini demonstraram que a fórmula por radicais não existe para a quíntica
-  geral, e esta é uma delas. A saída é a aula 2, e Newton leva poucos passos até
-  \(x = 1{,}167303978261\), com resíduo \(7\times10^{-16}\).</p>
+  <p>A secante troca a tangente pela reta que passa por dois pontos já calculados:</p>
 
-  <p><strong>(b) A integral que existe e não ajuda.</strong>
-  \(\int_0^1 e^{-x^2}dx = \sqrt{\pi}\,\mathrm{erf}(1)/2\). O SymPy resolveu, e a resposta está
-  correta. Só que \(\mathrm{erf}\) é definida <em>por</em> essa integral, de modo que o
-  simbólico não resolveu o problema: ele deu um nome ao problema. Para chegar a
-  \(0{,}746824132812427\) alguém ainda avalia \(\mathrm{erf}\) numericamente, por uma
-  aproximação de Chebyshev ou por uma série, que são a aula 3 e a aula 4 outra vez.</p>
+  <p>\[ f'(x_n) \approx \frac{f(x_n) - f(x_{n-1})}{x_n - x_{n-1}}
+     \quad\Longrightarrow\quad
+     x_{n+1} = x_n - f(x_n)\,\frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}. \]</p>
 
-  <p><strong>(c) A integral que não existe em forma fechada.</strong>
-  \(\int_0^1 \frac{e^{-x^2}}{1+x^3}dx\) não tem primitiva elementar, e o SymPy devolve a
-  integral intacta. A quadratura gaussiana com 20 nós dá \(0{,}655856363173858\), e o
-  <code>evalf</code> de alta precisão do próprio SymPy dá o mesmo número. Duas rotas
-  independentes, nenhuma fórmula.</p>
+  <p>A ordem de convergência cai de 2 para \(\varphi = (1+\sqrt{5})/2 \approx 1{,}618\), a razão
+  áurea, e esse número tem uma origem bonita. Pode-se mostrar que o erro da secante satisfaz
+  \(|e_{n+1}| \sim C|e_n||e_{n-1}|\). Procurando uma solução da forma
+  \(|e_n| \sim A|e_{n-1}|^{p}\), vem \(p^2 = p + 1\), que é exatamente a equação da razão
+  áurea.</p>
 
   <div class="bloco fisica">
-    <span class="rotulo">Por que isso é tranquilizador, e não frustrante</span>
-    <p>Um aluno pode ler esta seção como uma lista de derrotas. Vale ler ao contrário. Se
-    existisse fórmula fechada para tudo, métodos numéricos seriam uma curiosidade histórica e a
-    física computacional não existiria.</p>
-    <p>O que a seção mostra é que os problemas sem fórmula são a regra e não a exceção, e que
-    para eles existe um conjunto de ferramentas confiáveis, com erro estimável e verificação
-    independente. É disso que o curso tratou.</p>
+    <span class="rotulo">E na prática a secante costuma ganhar</span>
+    <p>Comparar 1,618 com 2 subestima a secante, porque conta passos e não custo. Cada passo de
+    Newton exige <em>duas</em> avaliações, \(f\) e \(f'\), enquanto a secante reaproveita o
+    valor anterior e gasta <em>uma</em>. Comparando por avaliação de função, Newton rende
+    \(\sqrt{2} \approx 1{,}414\) e a secante rende 1,618.</p>
+    <p>Quando avaliar \(f\) é caro, que é o caso sempre que \(f\) envolve resolver outro
+    problema numérico, a secante é o método mais eficiente dos três.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s7">7. O projeto: o pêndulo de amplitude grande</h2>
+  <h2 id="s4">4. As três maneiras de Newton falhar</h2>
 
-  <p>O exercício 4.4 pediu o período de um pêndulo de amplitude grande e parou aí. Agora o
-  problema vai até o fim, e serve de projeto integrador porque nele as quatro aulas anteriores
-  aparecem de uma vez, cada uma num lugar em que é indispensável.</p>
+  <p>A dedução da seção 1 pediu duas coisas: derivada não nula e chute já próximo da raiz. As
+  falhas são o que acontece quando cada uma dessas hipóteses é violada.</p>
 
-  <p>Um pêndulo simples de comprimento \(L\), solto do repouso com amplitude \(\theta_0\),
-  obedece a \(\ddot\theta = -(g/L)\sen\theta\). A aproximação \(\sen\theta\approx\theta\) dá o
-  período familiar \(T_0 = 2\pi\sqrt{L/g}\), independente da amplitude. Sem a aproximação, a
-  conservação de energia dá</p>
+  <h3>(a) Derivada nula, ou quase</h3>
 
-  <p>\[ T = 2\sqrt{\frac{2L}{g}}\int_0^{\theta_0}
-        \frac{d\theta}{\sqrt{\cos\theta - \cos\theta_0}}, \]</p>
+  <p>Com \(f'(x_n) = 0\) a tangente é horizontal e não cruza o eixo; a fórmula divide por zero e
+  o programa para. Esse é o caso benigno, porque ele avisa.</p>
 
-  <p>e o denominador se anula na extremidade superior, onde o pêndulo para. A integral converge,
-  mas o integrando vai a infinito como \(1/\sqrt{\theta_0-\theta}\).</p>
+  <p>O caso perigoso é a derivada <em>quase</em> nula, que não avisa. Em \(f(x) = x^3-2x-5\), a
+  derivada se anula em \(\sqrt{2/3} = 0{,}8165\ldots\), e partindo de perto dali:</p>
 
-  <div data-widget="pendulo"></div>
-
-  <h3>Aula 4: a integral, e a substituição que decide tudo</h3>
-
-  <p>Aplicada diretamente, a integral acima é exatamente o caso patológico da seção 7 da aula 4,
-  agora com consequência física. Quem não percebe a singularidade descarta o último ponto da
-  malha e segue. O resultado:</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(n\)</th><th>valor obtido</th><th>erro</th><th>razão de erros</th></tr>
-    <tr><td>32</td><td>0,93955745</td><td>\(1{,}27\times10^{-1}\)</td><td></td></tr>
-    <tr><td>128</td><td>1,00297989</td><td>\(6{,}34\times10^{-2}\)</td><td>2,001</td></tr>
-    <tr><td>512</td><td>1,03466131</td><td>\(3{,}17\times10^{-2}\)</td><td>2,000</td></tr>
-    <tr><td>2048</td><td>1,05049831</td><td>\(1{,}58\times10^{-2}\)</td><td>2,000</td></tr>
-  </table>
+  <div class="bloco ex">
+    <span class="rotulo">O salto</span>
+    <table>
+      <tr><th>\(x_0\)</th><th>\(f'(x_0)\)</th><th>próximo \(x\)</th></tr>
+      <tr><td>0,817496580928</td><td>\(4{,}9\times10^{-3}\)</td><td>\(1{,}24\times10^{3}\)</td></tr>
+      <tr><td>0,816497580928</td><td>\(4{,}9\times10^{-6}\)</td><td>\(1{,}24\times10^{6}\)</td></tr>
+      <tr><td>0,816496581928</td><td>\(4{,}9\times10^{-9}\)</td><td>\(1{,}24\times10^{9}\)</td></tr>
+    </table>
+    <p>Com \(x_0\) a um bilionésimo do ponto crítico, um único passo joga o chute para
+    \(10^{9}\). Nesta cúbica a história acaba bem, porque ela cresce e Newton acaba voltando;
+    numa função com várias raízes, o salto cai em outra bacia e o método converge para a raiz
+    errada, sem dizer nada.</p>
   </div>
 
-  <p>O erro cai pela metade quando \(n\) quadruplica, ou seja, como \(n^{-1/2}\). Para ganhar um
-  dígito decimal são cem vezes mais pontos, e para os dezesseis dígitos de um
-  <code>float64</code> não haveria memória no mundo.</p>
+  <h3>(b) Ciclo</h3>
 
-  <p>A substituição que resolve isso é a de Legendre,
-  \(\sen(\theta/2)=k\sen\varphi\) com \(k=\sen(\theta_0/2)\). Ela leva a integral para
-  \([0,\pi/2]\) e deixa o integrando limitado:</p>
+  <p>Em \(f(x) = x^3 - 2x + 2\), partindo de \(x_0 = 0\), Newton gera a sequência
+  \(0, 1, 0, 1, 0, 1,\ldots\) para sempre. O ciclo é exato, e não aproximado: cada ponto se
+  mapeia no outro tanto em aritmética exata quanto em ponto flutuante.</p>
 
-  <p>\[ \frac{T}{T_0} = \frac{2}{\pi}\int_0^{\pi/2}
-        \frac{d\varphi}{\sqrt{1-k^2\sen^2\varphi}} = \frac{2}{\pi}K(k^2), \]</p>
+  <p>O detalhe cruel é que <strong>nenhum critério de parada baseado em
+  \(|x_{n+1}-x_n|\) detecta isso</strong>, porque essa diferença não diminui nunca. O programa
+  roda até estourar o limite de iterações, e é por isso que esse limite precisa existir.</p>
 
-  <p>com \(K\) a integral elíptica completa de primeira espécie. Agora o trapézio simples:</p>
+  <h3>(c) Divergência: o chute fora da bacia de atração</h3>
 
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(\theta_0\)</th><th>graus</th><th>\(n=8\)</th><th>\(n=16\)</th>
-        <th>\(n=32\)</th><th>\(n=64\)</th></tr>
-    <tr><td>0,50</td><td>28,6</td><td>0</td><td>0</td>
-        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
-    <tr><td>1,00</td><td>57,3</td><td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td>
-        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
-    <tr><td>2,00</td><td>114,6</td><td>\(1{,}5\cdot10^{-9}\)</td><td>\(2\cdot10^{-16}\)</td>
-        <td>0</td><td>\(4\cdot10^{-16}\)</td></tr>
-    <tr><td>2,50</td><td>143,2</td><td>\(1{,}4\cdot10^{-5}\)</td><td>\(3{,}0\cdot10^{-10}\)</td>
-        <td>\(2\cdot10^{-16}\)</td><td>\(2\cdot10^{-16}\)</td></tr>
-    <tr><td>3,00</td><td>171,9</td><td>\(1{,}1\cdot10^{-1}\)</td><td>\(7{,}9\cdot10^{-3}\)</td>
-        <td>\(6{,}0\cdot10^{-5}\)</td><td>\(4{,}9\cdot10^{-9}\)</td></tr>
-    <tr><td>3,10</td><td>177,6</td><td>\(1{,}5\)</td><td>\(4{,}2\cdot10^{-1}\)</td>
-        <td>\(6{,}9\cdot10^{-2}\)</td><td>\(3{,}3\cdot10^{-3}\)</td></tr>
-  </table>
+  <p>A função \(\arctg x\) tem raiz única em zero e é o exemplo mais limpo. Newton converge se
+  \(|x_0|\) for menor que um certo limiar e diverge se for maior. O limiar não aparece na
+  função: ele é a órbita de período 2 do mapa de Newton, o ponto em que \(x\) vai para \(-x\),
+  e sai de \(\arctg x = 2x/(1+x^2)\). O programa o resolve e obtém
+  \(x^{*} = 1{,}3917452003\).</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">A navalha</span>
+    <table>
+      <tr><th>\(x_0\)</th><th>destino</th><th>\(|x|\) final</th></tr>
+      <tr><td>1,000000</td><td>convergiu</td><td>0</td></tr>
+      <tr><td>1,391744</td><td>convergiu</td><td>0</td></tr>
+      <tr><td>1,391746</td><td>divergiu</td><td>\(1{,}6\times10^{230}\)</td></tr>
+      <tr><td>1,500000</td><td>divergiu</td><td>\(9{,}5\times10^{216}\)</td></tr>
+    </table>
+    <p>Um milionésimo abaixo do limiar converge; um milionésimo acima diverge.</p>
   </div>
 
-  <p>Até cerca de 115°, oito intervalos já põem o resultado no último bit. É o mecanismo de
-  Euler-Maclaurin da seção 7 da aula 4 pela terceira vez: o integrando é par nas duas
-  extremidades, todas as derivadas de ordem ímpar se anulam lá, e a convergência vira
-  geométrica. Oito pontos na forma certa valem mais que dois mil na forma errada.</p>
+  <p>A segunda vista do widget mostra o mesmo fenômeno de outra forma, em
+  \(f(x) = x^3-5x\), que tem três raízes reais. Cada ponto de partida é pintado com a cor da
+  raiz a que Newton chega. Na maior parte da reta o resultado é o esperado e cada ponto vai
+  para a raiz mais próxima, mas há regiões em que isso falha.</p>
 
-  <p>A última linha mostra onde a mágica acaba. Quando \(\theta_0\to180°\), \(k\to1\) e o
-  integrando quase estoura em \(\varphi=\pi/2\): a função volta a ter uma quase-singularidade na
-  borda, e a convergência volta a ser lenta. Isso tem sentido físico, e é o melhor tipo de
-  limitação numérica, a que a física anuncia de antemão. Na posição invertida o pêndulo não
-  retorna, e o período diverge.</p>
-
-  <h3>Aula 1: o cancelamento quando a amplitude é pequena</h3>
-
-  <p>A pergunta útil no laboratório raramente é \(T\), e sim <em>quanto</em> o período se afasta
-  do valor ideal. Isso pede \(T/T_0 - 1\), que é a subtração de dois números próximos de 1.</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(\theta_0\)</th><th>\((2/\pi)K - 1\)</th><th>pela série</th>
-        <th>erro relativo</th></tr>
-    <tr><td>\(10^{-2}\)</td><td>\(6{,}2500358076\times10^{-6}\)</td>
-        <td>\(6{,}2500358075\times10^{-6}\)</td><td>\(6\times10^{-12}\)</td></tr>
-    <tr><td>\(10^{-4}\)</td><td>\(6{,}2499982967\times10^{-10}\)</td>
-        <td>\(6{,}2500000036\times10^{-10}\)</td><td>\(3\times10^{-7}\)</td></tr>
-    <tr><td>\(10^{-6}\)</td><td>\(6{,}2394533984\times10^{-14}\)</td>
-        <td>\(6{,}2500000000\times10^{-14}\)</td><td>\(2\times10^{-3}\)</td></tr>
-    <tr><td>\(10^{-7}\)</td><td>\(6{,}6613381478\times10^{-16}\)</td>
-        <td>\(6{,}2500000000\times10^{-16}\)</td><td>\(7\times10^{-2}\)</td></tr>
-    <tr><td>\(10^{-8}\)</td><td>\(0\)</td>
-        <td>\(6{,}2500000000\times10^{-18}\)</td><td>1</td></tr>
-  </table>
+  <div class="bloco fisica">
+    <span class="rotulo">Onde as faixas se acumulam, e por quê</span>
+    <p>A intuição diz que a confusão deveria estar nos pontos onde \(f'=0\), em
+    \(\pm\sqrt{5/3} = \pm1{,}291\), que é onde Newton escorrega. Medido, não é: ampliando em
+    torno de \(1{,}291\) aparecem sempre três faixas e nada mais, até que em \(10^{-10}\) a
+    janela cabe inteira dentro de uma faixa só e as trocas desaparecem. A estrutura ali
+    termina.</p>
+    <p>A estrutura fina está em \(x = \pm 1\), e a razão é a mesma do limiar do arco-tangente.
+    O mapa de Newton desta cúbica é</p>
+    <p>\[ N(x) = x - \frac{x^3-5x}{3x^2-5} = \frac{2x^3}{3x^2-5}, \]</p>
+    <p>e vale \(N(1) = -1\) e \(N(-1) = 1\): o par \(\{1,-1\}\) é uma <strong>órbita de
+    período 2</strong>. Ela é repelente, com multiplicador \(|(N\circ N)'(1)| = 36\), e é
+    sobre ela que as faixas se acumulam. Ampliando em torno de \(x=1\), o programa conta de
+    seis a sete trocas de cor em <em>cada</em> escala, de \(10^{-1}\) até \(10^{-10}\): a
+    estrutura não termina.</p>
+    <p>Os dois exemplos da aula são portanto o mesmo exemplo. O limiar \(1{,}3917\) do
+    arco-tangente também era a órbita de período 2 do seu mapa de Newton, obtida de
+    \(\arctg x = 2x/(1+x^2)\), que é a condição \(N(x) = -x\). Órbitas periódicas
+    repelentes são o que estraga a previsibilidade de Newton, e não as derivadas nulas, que
+    apenas produzem saltos grandes.</p>
   </div>
-
-  <p>Em \(\theta_0=10^{-8}\) a subtração devolve zero, e a resposta certa é
-  \(6{,}25\times10^{-18}\). Não há nada de errado com a função elíptica: o erro está em pedir a
-  diferença de dois números que coincidem nos dezesseis dígitos disponíveis. A série
-  \(\theta_0^2/16 + 11\theta_0^4/3072+\cdots\), que o SymPy fornece, não subtrai nada e por isso
-  acerta todos os dígitos.</p>
 
   <div class="bloco alerta">
-    <span class="rotulo">A fórmula exata é pior que a série truncada</span>
-    <p>O mesmo acontece com a derivada \(dR/d\theta_0\), e aqui o resultado é francamente
-    contraintuitivo. A derivada simbólica exata que o SymPy produz contém o fator
-    \(E(k) - \cos^2(\theta_0/2)\,K(k)\). Esses dois termos coincidem em treze dígitos quando
-    \(\theta_0=10^{-6}\), de modo que a diferença perde treze dígitos de precisão. A fórmula
-    exata devolve \(1{,}251\times10^{-7}\) onde a resposta é \(1{,}250\times10^{-7}\), um erro
-    relativo de \(8\times10^{-4}\); em \(\theta_0=10^{-8}\) ela devolve zero.</p>
-    <p>A série truncada em três termos acerta nos dois casos. Exata em álgebra e exata em
-    <code>float64</code> são propriedades diferentes, e esta é a demonstração mais limpa disso
-    que o curso encontrou.</p>
-  </div>
-
-  <h3>Aula 2: inverter a relação</h3>
-
-  <p>No laboratório mede-se o período e quer-se a amplitude, que é a pergunta inversa:
-  resolver \(R(\theta_0)=\) valor medido. É uma raiz, e Newton serve, com a derivada que a seção
-  anterior obteve do SymPy.</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(T/T_0\) medido</th><th>\(\theta_0\) (rad)</th><th>graus</th>
-        <th>passos</th><th>volta pelo trapézio</th></tr>
-    <tr><td>1,05</td><td>0,874480558183</td><td>50,104045</td><td>5</td>
-        <td>1,050000000000</td></tr>
-    <tr><td>1,20</td><td>1,640930736511</td><td>94,018406</td><td>7</td>
-        <td>1,200000000000</td></tr>
-    <tr><td>2,00</td><td>2,788231124107</td><td>159,753876</td><td>9</td>
-        <td>2,000000000000</td></tr>
-  </table>
-  </div>
-
-  <p>A última coluna é a verificação que importa, e não usa o SymPy: ela refaz a integral pelo
-  trapézio na forma de Legendre, que é um caminho inteiramente diferente. As duas rotas fecham
-  no último bit nos três casos.</p>
-
-  <h3>Aula 3: a tabela de consulta</h3>
-
-  <p>Cada avaliação de \(K\) custa uma média aritmético-geométrica, e um ajuste de dados com
-  milhares de chamadas paga isso milhares de vezes. Compensa interpolar uma vez e consultar
-  depois. Erro máximo em 1001 alvos de \([0,3]\) rad:</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>\(n\)</th><th>nós igualmente espaçados</th><th>nós de Chebyshev</th>
-        <th>ganho</th></tr>
-    <tr><td>9</td><td>\(2{,}5\times10^{-2}\)</td><td>\(1{,}1\times10^{-2}\)</td><td>2×</td></tr>
-    <tr><td>13</td><td>\(6{,}9\times10^{-3}\)</td><td>\(1{,}5\times10^{-3}\)</td><td>5×</td></tr>
-    <tr><td>17</td><td>\(2{,}2\times10^{-3}\)</td><td>\(2{,}1\times10^{-4}\)</td><td>11×</td></tr>
-    <tr><td>21</td><td>\(7{,}4\times10^{-4}\)</td><td>\(3{,}0\times10^{-5}\)</td><td>24×</td></tr>
-    <tr><td>25</td><td>\(2{,}7\times10^{-4}\)</td><td>\(4{,}6\times10^{-6}\)</td><td>58×</td></tr>
-  </table>
-  </div>
-
-  <p>Chebyshev ganha, e o ganho cresce com \(n\), que é a assinatura da aula 3. Vale reparar
-  também no que <em>não</em> acontece: nenhuma das duas colunas despenca como no exemplo de
-  Runge, e com 25 nós a melhor delas ainda está em \(10^{-6}\).</p>
-
-  <p>A razão é física. A função \(T/T_0\) tem uma singularidade logarítmica em
-  \(\theta_0=\pi\), que está a apenas 0,14 rad do fim do intervalo. A aula 3 mostrou que o erro
-  de interpolação tem um fator \(f^{(n+1)}/(n+1)!\), e perto de uma singularidade as derivadas
-  sucessivas crescem rápido demais para o fatorial segurar. Isso se mede: basta afastar o fim do
-  intervalo de \(\pi\) e ver o que acontece com os mesmos nós de Chebyshev.</p>
-
-  <div class="tabela-rolavel">
-  <table>
-    <tr><th>intervalo</th><th>distância até \(\pi\)</th><th>\(n=9\)</th><th>\(n=13\)</th>
-        <th>\(n=17\)</th><th>\(n=21\)</th></tr>
-    <tr><td>\([0,\,3]\)</td><td>0,14</td><td>\(1{,}1\cdot10^{-2}\)</td>
-        <td>\(1{,}5\cdot10^{-3}\)</td><td>\(2{,}1\cdot10^{-4}\)</td>
-        <td>\(3{,}0\cdot10^{-5}\)</td></tr>
-    <tr><td>\([0;\,2{,}5]\)</td><td>0,64</td><td>\(4{,}5\cdot10^{-5}\)</td>
-        <td>\(6{,}5\cdot10^{-7}\)</td><td>\(1{,}0\cdot10^{-8}\)</td>
-        <td>\(1{,}7\cdot10^{-10}\)</td></tr>
-    <tr><td>\([0,\,2]\)</td><td>1,14</td><td>\(7{,}9\cdot10^{-7}\)</td>
-        <td>\(2{,}1\cdot10^{-9}\)</td><td>\(6{,}1\cdot10^{-12}\)</td>
-        <td>\(1{,}9\cdot10^{-14}\)</td></tr>
-    <tr><td>\([0,\,1]\)</td><td>2,14</td><td>\(1{,}1\cdot10^{-10}\)</td>
-        <td>\(6{,}7\cdot10^{-15}\)</td><td>no último bit</td>
-        <td>no último bit</td></tr>
-  </table>
-  </div>
-
-  <p>Nada mudou no método, na função ou no número de nós: mudou só a distância entre a
-  singularidade e o intervalo, e cada radião de afastamento comprou cerca de cinco ordens de
-  grandeza. Em \([0,3]\) o erro cai por um fator 7 a cada quatro nós; em \([0,1]\), por um fator
-  de dezesseis mil. Para chegar perto de 180° sem pagar isso, o caminho é mudar de variável e
-  interpolar em \(\log(\pi-\theta_0)\), onde a singularidade se desdobra. É o exercício 5.5.</p>
-
-  <div class="bloco def">
-    <span class="rotulo">O que o projeto mostrou</span>
-    <p>Uma pergunta de física de primeiro período, quanto vale o período de um pêndulo, consumiu
-    as quatro aulas anteriores e mais esta:</p>
-    <ul>
-      <li><strong>Aula 4</strong> para calcular a integral, onde a substituição decide entre
-      oito pontos e dois mil;</li>
-      <li><strong>Aula 1</strong> para descobrir que \(T/T_0-1\) não se obtém por subtração
-      quando a amplitude é pequena, e que a fórmula exata é a pior rota;</li>
-      <li><strong>Aula 2</strong> para inverter a relação e responder à pergunta que o
-      laboratório realmente faz;</li>
-      <li><strong>Aula 3</strong> para transformar a resposta cara numa tabela barata, e para
-      saber por que ela converge devagar;</li>
-      <li><strong>Aula 5</strong> para obter a série, a derivada e o valor de referência sem
-      erro algébrico de ninguém.</li>
-    </ul>
-    <p>Nenhuma delas resolveria o problema sozinha, e em todos os pontos em que o método falhou
-    foi a física que disse onde ele falharia.</p>
+    <span class="rotulo">A conclusão prática: métodos híbridos</span>
+    <p>Não existe tolerância de chute inicial que proteja disso, porque a estrutura continua
+    fina em qualquer escala em que se olhe. Por isso o método padrão das bibliotecas não é
+    Newton puro: é um <strong>híbrido</strong>, que mantém um intervalo com troca de sinal e só
+    aceita o passo de Newton quando ele cai dentro desse intervalo, bissectando em caso
+    contrário.</p>
+    <p>O resultado tem a garantia da bisseção e a velocidade de Newton. É o que fazem o
+    <code>brentq</code> do SciPy e a <code>fsolve</code>, e é por isso que a resposta certa, em
+    código de produção, quase sempre é chamar a biblioteca.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s8">8. No Spyder</h2>
+  <h2 id="s5">5. O critério de parada que engana</h2>
+
+  <p>Parar quando \(|f(x_n)|\) for pequeno parece a coisa óbvia a fazer, e não funciona. Resíduo
+  pequeno só garante raiz próxima quando a função é íngreme ali; se ela for achatada, \(f\) pode
+  ser minúsculo bem longe da raiz.</p>
+
+  <div class="bloco ex">
+    <span class="rotulo">\(f(x) = (x-1)^8\), cuja única raiz é 1</span>
+    <table>
+      <tr><th>\(x\)</th><th>\(|x-1|\)</th><th>\(f(x)\)</th></tr>
+      <tr><td>1,10</td><td>\(10^{-1}\)</td><td>\(1{,}0\times10^{-8}\)</td></tr>
+      <tr><td>1,05</td><td>\(5\times10^{-2}\)</td><td>\(3{,}9\times10^{-11}\)</td></tr>
+      <tr><td>1,02</td><td>\(2\times10^{-2}\)</td><td>\(2{,}6\times10^{-14}\)</td></tr>
+    </table>
+    <p>Em \(x = 1{,}05\) o resíduo já é \(4\times10^{-11}\), que qualquer programa aceitaria
+    como zero, e o erro na raiz ainda é de 5 %. Com o critério \(|f| &lt; 10^{-10}\), o método
+    para com dois dígitos corretos achando que tem dez.</p>
+  </div>
+
+  <p>O critério correto olha para o <em>passo</em>, e mistura tolerância relativa com absoluta:</p>
+
+  <p>\[ |x_{n+1}-x_n| \le \tau_{\text{rel}}|x_{n+1}| + \tau_{\text{abs}}. \]</p>
+
+  <p>A parte relativa cuida de raízes grandes, para as quais exigir erro absoluto de
+  \(10^{-15}\) seria impossível; a absoluta cuida de raízes perto de zero, onde o erro relativo
+  perde o sentido. Na prática convém exigir as duas coisas, passo pequeno <em>e</em> resíduo
+  pequeno, e impor um teto de iterações para o caso do ciclo.</p>
+
+  <!-- ================================================== -->
+  <h2 id="s6">6. No Spyder</h2>
 
   <div class="cartoes">
-    <a class="cartao" href="codigo/simbolico.py">
+    <a class="cartao" href="codigo/raizes.py">
       <span class="numero">Programa</span>
-      <h3>simbolico.py</h3>
-      <p>Deriva as fórmulas de erro das aulas 3 e 4, mede o estrago de simplificar, cronometra a
-      ponte <code>lambdify</code>, exibe os três lugares onde o simbólico desiste, e resolve o
-      projeto do pêndulo inteiro, com verificação independente em cada etapa.</p>
+      <h3>raizes.py</h3>
+      <p>Compara os três métodos no mesmo problema, mede a ordem de convergência de cada um por
+      mínimos quadrados, reproduz as três falhas de Newton e resolve van der Waals para o
+      volume molar do CO₂.</p>
     </a>
   </div>
 
   <p><strong>O que ele imprime, e o que conferir.</strong></p>
 
   <ul>
-    <li>A série do trapézio começa em \(f_2h^3/12\) e a de Simpson em \(f_4h^5/90\), com os
-    coeficientes de \(h^3\) e \(h^4\) impressos como zero.</li>
-    <li>A diferença progressiva começa em \(h\) e a central em \(h^2\), com só potências pares.</li>
-    <li><code>simplify</code> da diferença entre as duas formas de \((x-1)^8\) dá exatamente 0,
-    e mesmo assim os valores diferem em dezessete ordens de grandeza.</li>
-    <li><code>lambdify</code> é cerca de 20 mil vezes mais rápida que <code>subs</code>, e bate
-    com NumPy escrito à mão por <code>np.array_equal</code>, que é igualdade exata.</li>
-    <li>Newton na quíntica dá 1,167303978261 com resíduo \(7\times10^{-16}\), e bate com
-    <code>nroots</code> do SymPy em doze dígitos.</li>
-    <li>Gauss com 20 nós e o <code>evalf</code> de 20 dígitos concordam na integral sem
-    primitiva, com diferença nula.</li>
-    <li>O trapézio na forma de Legendre com 8 intervalos bate o ingênuo com 512 em todas as
-    amplitudes testadas até 115°.</li>
-    <li>A inversão por Newton fecha pela volta do trapézio em \(2\times10^{-16}\) nos três
-    alvos.</li>
-    <li>Nenhum valor do pêndulo depende da própria rotina que o calcula: a referência é a
-    <code>ellipk</code> do SciPy.</li>
+  <li>Na cúbica \(x^3-2x-5\), bisseção precisa de 49 iterações, Newton de 7 e a secante de 8,
+  todos chegando à mesma raiz com resíduo na casa de \(10^{-15}\).</li>
+  <li>As ordens medidas dão 0,9739, 1,9366 e 1,6198, contra 1, 2 e 1,618. A taxa da bisseção dá
+  0,500750 contra \(1/2\).</li>
+  <li>O limiar de divergência do \(\arctg\) é <em>resolvido</em>, e não citado: o programa acha
+  \(1{,}3917452003\) como raiz de \(\arctg x = 2x/(1+x^2)\), e mostra a navalha em
+  \(\pm10^{-6}\) em torno dele.</li>
+  <li>A contagem de trocas de bacia, ampliando em torno do ponto crítico e em torno de
+  \(x=1\), separa os dois casos: duas trocas sempre num, seis ou sete em todas as escalas no
+  outro. E o programa confirma \(N(1)=-1\), \(N(-1)=+1\) e multiplicador 36, que é o que
+  identifica a órbita de período 2 como a culpada.</li>
+  <li>Em van der Waals, o desvio do gás ideal vai de 0,04 % a 0,1 bar até 68 % a 100 bar. A
+  derivada analítica usada por Newton é conferida contra uma diferença central, concordando em
+  \(1{,}6\times10^{-10}\).</li>
   </ul>
 
   <div class="bloco fisica">
-    <span class="rotulo">Por que o programa confere tudo duas vezes</span>
-    <p>Este é o último programa do curso, e vale dizer explicitamente o que todos eles vêm
-    fazendo. Nenhum número impresso aqui depende apenas da rotina que o produziu. O período sai
-    da <code>ellipk</code> do SciPy e do trapézio escrito à mão; a raiz da quíntica sai de Newton
-    e do <code>nroots</code>; a integral sem primitiva sai de Gauss e do <code>evalf</code>; as
-    fórmulas de erro saem da série simbólica e batem com as ordens medidas na aula 4.</p>
-    <p>Isso não é zelo excessivo. Um método numérico errado quase nunca avisa: ele imprime um
-    número com dezesseis dígitos, todos errados, com a mesma confiança com que imprimiria a
-    resposta certa. A única defesa é a segunda rota.</p>
+    <span class="rotulo">A raiz tripla, que o programa encontrou sozinho</span>
+    <p>No ponto crítico de van der Waals a cúbica tem <strong>raiz tripla</strong>, e vale
+    \(V_c = 3b\) exatamente. Rodando Newton ali, o programa converge, mas gasta
+    <strong>36 iterações</strong> para um problema que longe do ponto crítico se resolve em
+    cinco, e ainda assim chega com erro relativo de \(6\times10^{-6}\), e não com os
+    \(10^{-16}\) de sempre.</p>
+    <p>A razão está na dedução da seção 1. Ali apareceu \(f'(r)\) no denominador da constante;
+    numa raiz de multiplicidade \(m\) a derivada <em>também</em> se anula em \(r\), a dedução
+    desmonta, e Newton volta a ser linear com taxa \(1-1/m\), que vale \(2/3\) para \(m=3\).
+    Raiz múltipla é o caso em que Newton deixa de valer a pena <em>sem dar aviso nenhum</em>: ele
+    converge, devagar, e o resultado parece bom.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s9">9. Exercícios resolvidos</h2>
+  <h2 id="s7">7. Exercícios resolvidos</h2>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 5.1 · A ordem de Simpson 3/8, sem lousa</span>
-    <p>A regra de Simpson 3/8 usa três intervalos e um polinômio cúbico:
-    \(\frac{3h}{8}[f_0+3f_1+3f_2+f_3]\). Usando a mesma receita da seção 3, obtenha sua série de
-    erro e decida se ela ganha alguma coisa sobre Simpson 1/3.</p>
+    <span class="rotulo">Exercício resolvido 5.1 · Por que a raiz dupla estraga Newton</span>
+    <p>Mostre que, numa raiz de multiplicidade \(m\), Newton converge linearmente com taxa
+    \(1 - 1/m\), e proponha a correção.</p>
 
-    <p><strong>Montagem.</strong> Basta trocar a combinação linear:</p>
-    <pre><code>erro_38 = sp.expand(3*h/8*(taylor.subs(u,0) + 3*taylor.subs(u,h)
-                           + 3*taylor.subs(u,2*h) + taylor.subs(u,3*h))
-                    - sp.integrate(taylor, (u, 0, 3*h)))</code></pre>
+    <p><strong>Montagem.</strong> Multiplicidade \(m\) quer dizer
+    \(f(x) = (x-r)^m h(x)\) com \(h(r)\neq 0\). Derivando,</p>
+    <p>\[ f'(x) = m(x-r)^{m-1}h(x) + (x-r)^m h'(x) = (x-r)^{m-1}\bigl[m\,h(x) + (x-r)h'(x)\bigr]. \]</p>
 
-    <p><strong>O que sai.</strong></p>
-    <p>\[ \frac{3f_4h^5}{80} + \frac{9f_5h^6}{160} + \frac{53f_6h^7}{1120}. \]</p>
+    <p><strong>O passo de Newton.</strong> Dividindo,</p>
+    <p>\[ \frac{f(x)}{f'(x)} = \frac{(x-r)h(x)}{m\,h(x) + (x-r)h'(x)}, \]</p>
+    <p>e subtraindo \(r\) dos dois lados de \(x_{n+1} = x_n - f/f'\), com \(e = x-r\):</p>
+    <p>\[ e_{n+1} = e_n\left[1 - \frac{h(x_n)}{m\,h(x_n) + e_n h'(x_n)}\right]
+       \;\xrightarrow[\;e_n\to 0\;]{}\; e_n\left(1 - \frac{1}{m}\right). \]</p>
 
-    <p><strong>Leitura.</strong> O termo dominante é \(3h^5/80\), também de quinta ordem, exatamente
-    como Simpson 1/3. Três intervalos e um polinômio de grau 3 não compraram ordem nenhuma.</p>
+    <p><strong>Leitura.</strong> A convergência é linear com taxa \(1-1/m\): vale \(1/2\) para
+    raiz dupla e \(2/3\) para tripla. Com \(m=1\) a taxa é zero, que é a maneira de a conta
+    dizer que a convergência é mais rápida que linear, isto é, quadrática.</p>
 
-    <p>A comparação justa é por intervalo coberto. Para cobrir uma largura \(H\), Simpson 1/3
-    usa \(H/(2h)\) painéis de erro \(h^5/90\) cada, e 3/8 usa \(H/(3h)\) painéis de erro
-    \(3h^5/80\) cada:</p>
-    <p>\[ \text{1/3: } \frac{H}{2}\cdot\frac{h^4}{90} = \frac{Hh^4}{180}, \qquad
-       \text{3/8: } \frac{H}{3}\cdot\frac{3h^4}{80} = \frac{Hh^4}{80}. \]</p>
-    <p>A regra 3/8 erra \(180/80 = 2{,}25\) vezes mais, com o mesmo \(h\) e mais avaliações.
-    É a confirmação, agora por conta e não por argumento, do que a seção 3 da aula 4 afirmou:
-    regras de Newton-Cotes de grau par ganham uma ordem de graça, e as de grau ímpar não ganham
-    nada. A 3/8 existe por conveniência, quando o número de intervalos não é par.</p>
-  </div>
+    <p><strong>A correção.</strong> O fator \(1-1/m\) some se o passo for multiplicado por
+    \(m\):</p>
+    <p>\[ x_{n+1} = x_n - m\,\frac{f(x_n)}{f'(x_n)}, \]</p>
+    <p>e a convergência quadrática volta. O problema é que isso exige conhecer \(m\) de
+    antemão. Quando não se conhece, aplica-se Newton a \(u(x) = f(x)/f'(x)\), que tem raiz
+    <em>simples</em> em \(r\) seja qual for a multiplicidade de \(f\). O preço é precisar de
+    \(f''\).</p>
 
-  <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 5.2 · Uma simplificação que custa seis dígitos</span>
-    <p>A energia de um oscilador amortecido ao fim de um ciclo envolve o fator
-    \(1-e^{-2\gamma T}\). Para amortecimento fraco, \(\gamma T\) é pequeno. Compare a forma
-    direta com a forma que o SymPy produz ao expandir, e diga qual usar.</p>
-
-    <p><strong>O problema.</strong> Em \(\gamma T = 10^{-9}\), a forma direta
-    <code>1 - np.exp(-2*g*T)</code> subtrai de 1 um número que vale
-    \(0{,}999999998\ldots\), e o resultado, \(2\times10^{-9}\), fica com apenas sete dígitos
-    corretos: a subtração descartou os dígitos que importavam antes de eles poderem ser usados.</p>
-
-    <p><strong>O que o SymPy oferece.</strong></p>
-    <pre><code>g, T = sp.symbols('gamma T', positive=True)
-sp.series(1 - sp.exp(-2*g*T), g*T, 0, 4)</code></pre>
-    <p>\[ 1-e^{-2\gamma T} = 2\gamma T - 2(\gamma T)^2 + \frac{4(\gamma T)^3}{3} + O((\gamma T)^4). \]</p>
-
-    <p><strong>A resposta prática.</strong> Nenhuma das duas, e sim a função que já existe para
-    isso: <code>np.expm1(-2*g*T)</code>, com o sinal trocado, que calcula \(e^x-1\) sem a
-    subtração e devolve os dezesseis dígitos. Em \(\gamma T = 10^{-9}\):</p>
-    <div class="tabela-rolavel">
-    <table>
-      <tr><th>rota</th><th>valor</th><th>dígitos corretos</th></tr>
-      <tr><td><code>1 - np.exp(-2*g*T)</code></td><td>\(2{,}0000000545\times10^{-9}\)</td>
-          <td>\(\sim 7\)</td></tr>
-      <tr><td>série até \((\gamma T)^3\)</td><td>\(1{,}9999999980\times10^{-9}\)</td>
-          <td>16</td></tr>
-      <tr><td><code>-np.expm1(-2*g*T)</code></td><td>\(1{,}9999999980\times10^{-9}\)</td>
-          <td>16</td></tr>
-    </table>
+    <div class="bloco def">
+      <span class="rotulo">Como perceber isso num programa de verdade</span>
+      <p>Raiz múltipla não anuncia que chegou. O primeiro sintoma é Newton convergir em vinte
+      ou trinta iterações em vez de cinco.</p>
+      <p>O segundo é mais sério e não se conserta trocando de método. Perto de uma raiz dupla
+      vale \(f(x)\approx C(x-r)^2\), de modo que \(f\) cai abaixo do erro de arredondamento
+      já a uma distância \(\sqrt{\varepsilon/C}\) da raiz, e dali para dentro ela avalia como
+      zero. Avaliando \((x-1)^2\) na forma expandida \(x^2-2x+1\), que é como uma função
+      real chegaria, o resultado é <strong>exatamente zero</strong> para todo \(x\) a menos de
+      \(1{,}05\times10^{-8}\) de 1, contra \(\sqrt{\varepsilon}=1{,}49\times10^{-8}\).</p>
+      <p>Há portanto um intervalo inteiro de largura \(10^{-8}\) em que a função é
+      indistinguível de zero, e nenhum método, por melhor que seja, localiza a raiz melhor do
+      que isso. Com raiz tripla o limite piora para
+      \(\varepsilon^{1/3}\approx 6\times10^{-6}\), que é exatamente a ordem do erro com que
+      o programa chegou ao volume crítico de van der Waals.</p>
     </div>
-
-    <p><strong>A moral.</strong> O simbólico foi útil aqui, e não como fornecedor da resposta
-    final: ele mostrou que a expressão é \(2\gamma T\) vezes algo próximo de 1, o que revelou o
-    cancelamento. Diagnosticado o cancelamento, a correção veio de uma função de biblioteca que
-    existe exatamente para esse caso. Esse costuma ser o fluxo real: o simbólico explica, a
-    biblioteca resolve.</p>
   </div>
 
   <!-- ================================================== -->
-  <h2 id="s10">10. Exercícios propostos</h2>
+  <h2 id="s8">8. Exercícios propostos</h2>
 
   <div class="bloco def">
-    <span class="rotulo">Para entregar</span>
+    <span class="rotulo">Para resolver</span>
     <ol>
-      <li><b>5.1</b> Use a receita da seção 3 para obter a série de erro da regra do ponto médio,
-      \(h\,f(h/2)\). Mostre que ela é de mesma ordem que o trapézio e que o coeficiente é
-      <em>metade</em> do dele, com sinal oposto. Em seguida explique, a partir desses dois
-      coeficientes, por que \((2M+T)/3\) é exatamente Simpson.</li>
+      <li><b>5.1</b> A equação de Kepler, \(M = E - e\sen E\), dá a anomalia excêntrica \(E\) a
+      partir da anomalia média \(M\). Resolva-a por Newton para a órbita de Halley
+      (\(e = 0{,}967\)) com \(M = 0{,}1\) rad, partindo de \(E_0 = M\). Conte as iterações,
+      repita com \(e = 0{,}5\) e explique a diferença. Dica: para \(e\) perto de 1 o chute
+      \(E_0 = M\) é ruim, e \(E_0 = \pi\) funciona melhor.</li>
 
-      <li><b>5.2</b> Obtenha com o SymPy a série de erro da diferença central de segunda derivada,
-      \([f(h)-2f(0)+f(-h)]/h^2\). Depois meça numericamente o erro total em
-      \(f=e^x\) para \(h\) de \(10^{-1}\) a \(10^{-9}\), faça o gráfico log-log e localize o
-      \(h\) ótimo. Compare com a previsão \(h^\ast \approx \varepsilon^{1/4}\).</li>
+      <li><b>5.2</b> A equação \(\tg x = x\) tem infinitas raízes, uma em cada intervalo entre
+      assíntotas consecutivas. Escreva um programa que ache as dez primeiras raízes positivas e
+      confira que elas se aproximam de \((n+\tfrac12)\pi\). Cuidado com as assíntotas: diga como
+      você garantiu que o intervalo de busca não continha nenhuma.</li>
 
-      <li><b>5.3</b> Repita a demonstração da seção 4 com \(\sen(x)-x\) perto da origem: compare
-      a avaliação direta com a série de Taylor de três termos, e localize o \(x\) abaixo do qual
-      a forma direta perde mais da metade dos dígitos. Explique o número que encontrar.</li>
+      <li><b>5.3</b> Implemente o método de Halley,
+      \(x_{n+1} = x_n - \dfrac{2ff'}{2f'^2 - ff''}\), que é de ordem 3. Meça a ordem no mesmo
+      exemplo da aula e verifique que dá 3. Em seguida compare com Newton <em>por avaliação de
+      função</em>, contando que Halley gasta três por passo, e diga qual dos dois você usaria.</li>
 
-      <li><b>5.4</b> O período do pêndulo perto de 180°. Mostre com o SymPy que
-      \(K(k^2)\sim\ln\frac{4}{\sqrt{1-k^2}}\) quando \(k\to1\), e use isso para construir uma
-      aproximação de \(T/T_0\) válida entre 175° e 179,99°. Compare com o valor exato e com o
-      que a série de potências da seção 7 daria.</li>
+      <li><b>5.4</b> Para a cúbica \(x^3-5x\) do widget, reproduza numericamente a figura das
+      bacias de atração: varra \(x_0\) de \(-3\) a 3 e registre a qual raiz Newton leva. Depois
+      amplie a região em torno de \(x = 1{,}29\) por um fator mil e mostre que a estrutura se
+      repete. Em meia página, diga o que isso significa para a confiabilidade de Newton.</li>
 
-      <li><b>5.5</b> Refaça a tabela de consulta da seção 7 interpolando em
-      \(s=\log(\pi-\theta_0)\) em vez de em \(\theta_0\), no intervalo de 90° a 179,9°. Meça o
-      erro máximo com 9, 13 e 17 nós, e diga se a mudança de variável recuperou a convergência
-      rápida.</li>
+      <li><b>5.5</b> A equação de estado de Redlich-Kwong,
+      \(p = \dfrac{RT}{V-b} - \dfrac{a}{\sqrt{T}\,V(V+b)}\), é mais precisa que van der Waals.
+      Resolva-a para o volume molar do CO₂ nas mesmas condições do programa da aula e compare as
+      duas. Para o CO₂, \(a = 64{,}6\) Pa·m⁶·K<sup>1/2</sup>/mol² e
+      \(b = 2{,}97\times10^{-5}\) m³/mol.</li>
 
-      <li><b>5.6</b> Um projeto alternativo: o lançamento com resistência do ar proporcional a
-      \(v^2\). A equação não tem solução fechada. Obtenha a solução de pequena resistência por
-      série com o SymPy, resolva numericamente o problema completo, e use uma raiz para achar o
-      ângulo de alcance máximo. Diga onde cada aula do curso entrou.</li>
-
-      <li><b>5.7</b> Em uma página: escolha um dos programas deste curso, leia a seção de
-      verificação dele, e proponha <em>uma</em> verificação a mais que o autor não fez. Diga que
-      erro ela pegaria e por que as verificações existentes não pegariam.</li>
+      <li><b>5.6</b> Em meia página: um colega escreveu um Newton que converge em 28 iterações e
+      concluiu que o método é ruim. Liste as quatro causas possíveis, diga que teste distingue
+      cada uma das outras, e qual delas é a mais provável.</li>
     </ol>
   </div>
 
-  <!-- ================================================== -->
-  <h2 id="s11">11. O que este curso tentou ensinar</h2>
-
-  <p>As cinco aulas cobriram ponto flutuante, raízes, interpolação, integração e álgebra
-  simbólica, e esse é o conteúdo que a ementa pede. Não é, porém, o que eu gostaria que ficasse.
-  O que fica, se alguma coisa ficar, são três hábitos.</p>
-
-  <p><strong>Conferir por uma segunda rota.</strong> Um método numérico errado não avisa; ele
-  devolve dezesseis dígitos, todos errados, com a mesma cara de quem devolveria a resposta certa.
-  Toda afirmação numérica deste curso foi conferida contra uma forma fechada, contra um método
-  independente, ou contra o comportamento assintótico previsto. Várias vezes a conferência
-  reprovou o que eu tinha escrito, e essas vezes estão registradas nas páginas, porque são a
-  parte mais instrutiva.</p>
-
-  <p><strong>Olhar para o problema antes de aumentar \(n\).</strong> As maiores vitórias deste
-  curso não vieram de malhas mais finas. Vieram de uma mudança de variável que removeu uma
-  singularidade, de nós colocados onde o erro mandava, de uma expressão reescrita para não
-  subtrair. Refinar é a última ferramenta, não a primeira, e em vários dos casos aqui refinar
-  piorava o resultado.</p>
-
-  <p><strong>Saber onde o método vai falhar antes de ele falhar.</strong> Em todos os casos
-  patológicos deste curso, havia um aviso prévio: uma derivada infinita, uma singularidade perto
-  do intervalo, dois números que coincidem nos primeiros dígitos, uma matriz mal condicionada.
-  Quem conhece a física do problema enxerga esses avisos antes de rodar o programa, e essa é a
-  vantagem real de um físico sobre uma biblioteca.</p>
-
-  <p>Os cinco programas ficam aqui, e eles foram escritos para serem lidos e modificados, não só
-  executados. Mude um parâmetro e veja o que quebra: é assim que se aprende onde estão as
-  bordas.</p>
-
   <nav class="nav-aulas">
-    <a href="aula04.html"><small>Aula anterior</small>← 4. Integração</a>
-    <a class="prox" href="index.html"><small>Voltar</small>Página inicial →</a>
+    <a href="aula02.html"><small>Aula anterior</small>← 2. Ponto flutuante</a>
+    <a class="prox" href="aula09.html"><small>Próxima aula</small>9. Interpolação e ajuste →</a>
   </nav>
 
 </main>
@@ -749,6 +467,6 @@ sp.series(1 - sp.exp(-2*g*T), g*T, 0, 4)</code></pre>
   <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
 </footer>
 
-<script src="assets/js/widgets.js?v=202611220937"></script>
+<script src="assets/js/widgets.js?v=202611221002"></script>
 </body>
 </html>

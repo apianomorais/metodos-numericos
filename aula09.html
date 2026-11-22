@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aula 3: Interpolação e ajuste de curvas | Métodos Numéricos</title>
+<title>Aula 9: Interpolação e ajuste de curvas | Métodos Numéricos</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
-<script src="assets/js/comum.js?v=202611220937"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221002">
+<script src="assets/js/comum.js?v=202611221002"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -17,13 +17,14 @@
     <nav class="menu">
       <a href="index.html">Início</a>
       <span class="grupo">Erro</span>
-      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
-      <span class="grupo">Métodos</span>
-      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
-      <a href="aula03.html" class="num ativo" title="Aula 3: Interpolação e ajuste de curvas">3</a>
-      <a href="aula04.html" class="num" title="Aula 4: Integração numérica">4</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num ativo" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
       <span class="grupo">Fechamento</span>
-      <a href="aula05.html" class="num" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
     </nav>
   </div>
 </header>
@@ -47,7 +48,7 @@
 
 <main class="conteudo">
 
-  <p class="chapeu">Aula 3 · Resolver, interpolar, integrar</p>
+  <p class="chapeu">Aula 9 · Interpolar e integrar</p>
   <h1>Interpolação e ajuste de curvas</h1>
   <p class="subtitulo">Passar pelos pontos e passar perto deles são problemas diferentes, e a escolha entre os dois não é de gosto: depende de os pontos estarem certos ou não. Resolvida essa pergunta, aparece a segunda, que é mais surpreendente: acrescentar pontos pode piorar o resultado.</p>
 
@@ -59,7 +60,7 @@
       <li>Reconhecer o fenômeno de Runge e identificar os nós como a causa;</li>
       <li>Construir uma spline cúbica e saber o que ela garante e o que não garante;</li>
       <li>Obter as equações normais e medir o preço de usá-las;</li>
-      <li>Reconhecer a matriz de Hilbert da aula 1 escondida no ajuste polinomial.</li>
+      <li>Reconhecer a matriz de Hilbert da aula 3 escondida no ajuste polinomial.</li>
     </ul>
   </div>
 
@@ -212,7 +213,7 @@
     <p>Quando se tem liberdade de escolher <em>onde</em> amostrar uma função, essa escolha pode
     valer mais que todo o resto do método. Pontos igualmente espaçados são a escolha que não
     exige pensar, e raramente são a melhor.</p>
-    <p>A mesma ideia reaparece na aula 4: a quadratura gaussiana é exatamente isto aplicado a
+    <p>A mesma ideia reaparece na aula 10: a quadratura gaussiana é exatamente isto aplicado a
     integrais, e o ganho é da mesma ordem.</p>
   </div>
 
@@ -321,13 +322,13 @@
 
   <p>A primeira é que \(\kappa(\Ten{A}^{\mathsf{T}}\Ten{A})\) é exatamente o <strong>quadrado</strong>
   de \(\kappa(\Ten{A})\). Quem monta as equações normais está elevando ao quadrado o
-  condicionamento do problema e, pela regra da aula 1, jogando fora <em>metade</em> dos dígitos
+  condicionamento do problema e, pela regra da aula 3, jogando fora <em>metade</em> dos dígitos
   antes mesmo de começar a resolver.</p>
 
   <p>A segunda é que a última coluna bate com a primeira. Não é analogia: com os dados em
   \([0,1]\), a soma \(\sum_i x_i^{\,j+k}\) dividida por \(m\) é uma aproximação da integral
   \(\int_0^1 x^{j+k}dx = 1/(j+k+1)\). As equações normais na base das potências
-  <strong>são</strong> a matriz de Hilbert, que a aula 1 usou como exemplo de problema sem
+  <strong>são</strong> a matriz de Hilbert, que a aula 3 usou como exemplo de problema sem
   salvação. Ela não era um exemplo artificial: ela aparece sozinha no primeiro ajuste que se
   tenta fazer.</p>
 
@@ -403,7 +404,7 @@
   <h2 id="s8">8. Exercícios resolvidos</h2>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 3.1 · Quantos pontos para uma tabela de senos</span>
+    <span class="rotulo">Exercício resolvido 9.1 · Quantos pontos para uma tabela de senos</span>
     <p>Quer-se tabelar \(\sen x\) em \([0, \pi/2]\) com passo uniforme \(h\), de modo que a
     interpolação linear entre dois valores vizinhos erre menos que \(10^{-6}\). Qual \(h\)?</p>
 
@@ -433,7 +434,7 @@
   </div>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 3.2 · Ajustar uma exponencial, e o que se perde ao linearizar</span>
+    <span class="rotulo">Exercício resolvido 9.2 · Ajustar uma exponencial, e o que se perde ao linearizar</span>
     <p>Para ajustar \(y = Ae^{-kx}\) a dados, o caminho usual é tomar logaritmos e fazer um ajuste
     linear de \(\ln y\) contra \(x\). Mostre que isso <em>não</em> minimiza a mesma coisa que o
     ajuste direto, e diga quando a diferença importa.</p>
@@ -480,41 +481,41 @@
   <div class="bloco def">
     <span class="rotulo">Para resolver</span>
     <ol>
-      <li><b>3.1</b> Reproduza a tabela de Runge do programa e acrescente uma coluna com a
+      <li><b>9.1</b> Reproduza a tabela de Runge do programa e acrescente uma coluna com a
       constante de Lebesgue dos nós, \(\Lambda_n = \max_x \sum_i |L_i(x)|\). Mostre que ela cresce
       exponencialmente para nós uniformes e apenas como \(\ln n\) para Chebyshev, e explique por
       que essa é a medida certa da qualidade de um conjunto de nós.</li>
 
-      <li><b>3.2</b> Implemente a forma baricêntrica da interpolação de Lagrange, que avalia o
+      <li><b>9.2</b> Implemente a forma baricêntrica da interpolação de Lagrange, que avalia o
       polinômio em \(O(n)\) em vez de \(O(n^2)\). Compare o tempo com a forma crua para \(n=100\)
       e 1000 pontos de avaliação, e verifique que as duas dão o mesmo resultado.</li>
 
-      <li><b>3.3</b> Monte uma spline cúbica à mão, resolvendo o sistema tridiagonal pelo
+      <li><b>9.3</b> Monte uma spline cúbica à mão, resolvendo o sistema tridiagonal pelo
       algoritmo de Thomas, e compare com a <code>CubicSpline</code> do SciPy nas três condições de
       contorno. Confira que a sua implementação é \(O(n)\) cronometrando com \(n\) de \(10^3\) a
       \(10^6\).</li>
 
-      <li><b>3.4</b> Repita a medida da ordem de convergência da spline, mas com a condição
+      <li><b>9.4</b> Repita a medida da ordem de convergência da spline, mas com a condição
       <em>not-a-knot</em>, que é o padrão do SciPy. Ela recupera a ordem \(h^4\) sem precisar
       conhecer a derivada nas pontas? Meça e diga.</li>
 
-      <li><b>3.5</b> Ajuste um polinômio de grau 10 aos mesmos dados pela base das potências e
+      <li><b>9.5</b> Ajuste um polinômio de grau 10 aos mesmos dados pela base das potências e
       pela base de Chebyshev deslocada para o intervalo. Meça o número de condição da matriz de
       projeto nos dois casos e compare os coeficientes obtidos. Mostre que os dois polinômios são
       o mesmo, apesar de os coeficientes serem completamente diferentes.</li>
 
-      <li><b>3.6</b> Gere 30 pontos de uma parábola com ruído e ajuste polinômios de grau 1 a 15.
+      <li><b>9.6</b> Gere 30 pontos de uma parábola com ruído e ajuste polinômios de grau 1 a 15.
       Faça o gráfico do resíduo quadrático médio contra o grau e explique por que ele cai sempre,
       inclusive depois do grau 2. Em seguida divida os dados em dois conjuntos, ajuste num e meça
       o resíduo no outro, e mostre que essa segunda curva tem mínimo. Como se chama o que você
       acabou de fazer?</li>
 
-      <li><b>3.7</b> Uma tabela de calor específico tem medidas a cada 50 K, de 300 a 900 K, e
+      <li><b>9.7</b> Uma tabela de calor específico tem medidas a cada 50 K, de 300 a 900 K, e
       você precisa do valor a 437 K. Compare interpolação linear, cúbica por spline e ajuste
       polinomial de grau 3, e diga qual você usaria e por quê. Depois suponha que as medidas têm
       1 % de incerteza e refaça a escolha.</li>
 
-      <li><b>3.8</b> Em meia página: a aula afirma que a matriz de Hilbert "aparece sozinha" no
+      <li><b>9.8</b> Em meia página: a aula afirma que a matriz de Hilbert "aparece sozinha" no
       ajuste polinomial. Mostre a conta que liga as duas, partindo de
       \(\sum_i x_i^{\,j+k}\) com \(x_i\) uniformes em \([0,1]\), e diga o que muda se os dados
       estiverem em \([-1,1]\) em vez de \([0,1]\). Confira numericamente.</li>
@@ -522,8 +523,8 @@
   </div>
 
   <nav class="nav-aulas">
-    <a href="aula02.html"><small>Aula anterior</small>← 2. Raízes</a>
-    <a class="prox" href="aula04.html"><small>Próxima aula</small>4. Integração →</a>
+    <a href="aula05.html"><small>Aula anterior</small>← 5. Newton</a>
+    <a class="prox" href="aula10.html"><small>Próxima aula</small>10. Integração →</a>
   </nav>
 
 </main>
@@ -536,6 +537,6 @@
   <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
 </footer>
 
-<script src="assets/js/widgets.js?v=202611220937"></script>
+<script src="assets/js/widgets.js?v=202611221002"></script>
 </body>
 </html>

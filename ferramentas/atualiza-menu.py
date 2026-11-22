@@ -13,22 +13,30 @@ import re
 
 # (numero, titulo curto para o menu, titulo para a seta do rodape)
 #
-# Estas cinco aulas sao o Modulo III da disciplina Metodos Numericos e
-# Estatisticos, que no cronograma aparecem como aulas 24 a 28. Aqui sao
-# numeradas de 1 a 5 porque o site e so delas; a correspondencia esta
-# dita no indice.
+# Estas aulas sao o Modulo II da disciplina Metodos Numericos e
+# Estatisticos, que tem 26 horas e cobre os capitulos 19 a 27 do material
+# de apoio. A ordem aqui e a do material. As duas ultimas nao tem capitulo
+# proprio ainda, mas a Apresentacao as promete entre os objetivos.
 TITULOS = {
-    1: ("Como o computador representa um número", "Ponto flutuante"),
-    2: ("Raízes de equações", "Raízes"),
-    3: ("Interpolação e ajuste de curvas", "Interpolação e ajuste"),
-    4: ("Integração numérica", "Integração"),
-    5: ("Matemática simbólica e projeto integrador", "Simbólico e projeto"),
+    1: ("Sistemas de numeração e conversão de bases", "Bases"),
+    2: ("Representação em ponto flutuante", "Ponto flutuante"),
+    3: ("Erros numéricos e propagação", "Erros"),
+    4: ("O método da bisseção", "Bisseção"),
+    5: ("Newton-Raphson e a secante", "Newton"),
+    6: ("Métodos iterativos de ponto fixo", "Ponto fixo"),
+    7: ("Localização de raízes reais de polinômios", "Raízes de polinômios"),
+    8: ("Briot-Ruffini e raízes múltiplas", "Deflação"),
+    9: ("Interpolação e ajuste de curvas", "Interpolação e ajuste"),
+    10: ("Integração numérica", "Integração"),
+    11: ("Matemática simbólica e projeto integrador", "Simbólico e projeto"),
 }
 
 UNIDADES = [
-    ("O erro que a máquina comete", "Erro", [1]),
-    ("Resolver, interpolar, integrar", "Métodos", [2, 3, 4]),
-    ("Fechamento", "Fechamento", [5]),
+    ("Como a máquina erra", "Erro", [1, 2, 3]),
+    ("Raízes de equações", "Raízes", [4, 5, 6]),
+    ("Raízes de polinômios", "Polinômios", [7, 8]),
+    ("Interpolar e integrar", "Interpolar", [9, 10]),
+    ("Fechamento", "Fechamento", [11]),
 ]
 
 # o que vai no chapéu de cada página, logo acima do título
@@ -121,6 +129,19 @@ def main():
                     r'(<p class="chapeu">)Aula \d+[^<]*(</p>)',
                     lambda _: '<p class="chapeu">Aula %d · %s</p>' % (n, CHAPEU[n]),
                     texto, count=1)
+            if n in TITULOS:
+                # o <title> da aba e boilerplate e sai daqui; uma renumeracao
+                # ja passou batido por ele uma vez
+                texto = re.sub(
+                    r'<title>[^<]*</title>',
+                    lambda _: '<title>Aula %d: %s | Métodos Numéricos</title>'
+                              % (n, TITULOS[n][0]),
+                    texto, count=1)
+                # o <h1> fica sob controle editorial, mas tem de bater
+                h1 = re.search(r'<h1>([^<]*)</h1>', texto)
+                if h1 and h1.group(1) != TITULOS[n][0]:
+                    print('AVISO: <h1> de %s diz "%s" e TITULOS diz "%s"'
+                          % (p, h1.group(1), TITULOS[n][0]))
             rod = monta_rodape(n)
             if rod and pad_rod.search(texto):
                 novo = '<nav class="nav-aulas">%s</nav>' % rod

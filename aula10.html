@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aula 4: Integração numérica | Métodos Numéricos</title>
+<title>Aula 10: Integração numérica | Métodos Numéricos</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
-<script src="assets/js/comum.js?v=202611220937"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221002">
+<script src="assets/js/comum.js?v=202611221002"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -17,13 +17,14 @@
     <nav class="menu">
       <a href="index.html">Início</a>
       <span class="grupo">Erro</span>
-      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
-      <span class="grupo">Métodos</span>
-      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
-      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
-      <a href="aula04.html" class="num ativo" title="Aula 4: Integração numérica">4</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num ativo" title="Aula 10: Integração numérica">10</a>
       <span class="grupo">Fechamento</span>
-      <a href="aula05.html" class="num" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
     </nav>
   </div>
 </header>
@@ -49,7 +50,7 @@
 
 <main class="conteudo">
 
-  <p class="chapeu">Aula 4 · Resolver, interpolar, integrar</p>
+  <p class="chapeu">Aula 10 · Interpolar e integrar</p>
   <h1>Integração numérica</h1>
   <p class="subtitulo">Toda regra de integração é a mesma receita: trocar a função por um polinômio e integrar o polinômio. O que muda é o grau do polinômio e, na quadratura gaussiana, onde se escolhe medir a função. Essa segunda liberdade vale mais que a primeira, e é a mesma lição dos nós de Chebyshev.</p>
 
@@ -75,9 +76,9 @@
   Fresnel e as funções elípticas existem como nomes justamente porque as integrais que as definem
   não se exprimem em funções elementares.</p>
 
-  <p>A estratégia de Newton-Cotes é a mesma da aula 3, aplicada de novo: onde a função é difícil,
+  <p>A estratégia de Newton-Cotes é a mesma da aula 9, aplicada de novo: onde a função é difícil,
   ponha um polinômio no lugar dela. Polinômios se integram exatamente, e o erro da integral é a
-  integral do erro de interpolação, que a aula 3 já sabe estimar.</p>
+  integral do erro de interpolação, que a aula 9 já sabe estimar.</p>
 
   <div class="bloco def">
     <span class="rotulo">A família</span>
@@ -93,7 +94,7 @@
     \(m=3\), são o assunto da seção 3.</p>
   </div>
 
-  <p>Subir indefinidamente o grau não funciona, pelo motivo que a aula 3 já expôs: as regras de
+  <p>Subir indefinidamente o grau não funciona, pelo motivo que a aula 9 já expôs: as regras de
   Newton-Cotes de grau alto têm o fenômeno de Runge embutido, e a partir de \(m=8\) elas passam a
   ter <strong>pesos negativos</strong>, o que amplifica o erro de arredondamento. Na prática,
   usa-se grau baixo em muitos pedaços, ou se muda de estratégia, como faz Gauss.</p>
@@ -404,7 +405,7 @@
 
   <div class="bloco fisica">
     <span class="rotulo">Por que o <code>np.sum</code> escapa, e por que isso não deveria importar</span>
-    <p>É a mesma razão da aula 1: o <code>np.sum</code> soma por pares, e o erro dessa soma cresce
+    <p>É a mesma razão da aula 2: o <code>np.sum</code> soma por pares, e o erro dessa soma cresce
     como \(\sqrt{\log n}\) em vez de \(\sqrt{n}\). Com \(n = 1{,}7\times10^{7}\), \(\sqrt{n}\)
     vale 4100 e \(\sqrt{\log n}\) vale 4,9: o piso fica quase mil vezes mais baixo, e a varredura
     não chega nele.</p>
@@ -452,7 +453,7 @@
     e não o encontrava: o erro caía monotonicamente até \(n = 1{,}7\times10^{7}\), nove vezes
     além do ótimo previsto. O texto que eu tinha escrito afirmava que o ótimo estava lá e que a
     ordem de grandeza batia, e nada disso aparecia nos números.</p>
-    <p>A causa era a soma por pares do NumPy, que já tinha sido o assunto da aula 1. Refazendo a
+    <p>A causa era a soma por pares do NumPy, que já tinha sido o assunto da aula 2. Refazendo a
     medida com acumulação sequencial, o piso apareceu onde devia. O episódio vale como aviso: um
     modelo de erro que supõe <em>como</em> a soma é feita precisa ser testado com essa soma, e não
     com a que a biblioteca escolheu.</p>
@@ -462,7 +463,7 @@
   <h2 id="s10">10. Exercícios resolvidos</h2>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 4.1 · Quantos intervalos para seis casas</span>
+    <span class="rotulo">Exercício resolvido 10.1 · Quantos intervalos para seis casas</span>
     <p>Quer-se \(\int_0^1 e^{-x^2}dx\) com erro menor que \(10^{-6}\). Quantos intervalos são
     necessários pelo trapézio e por Simpson?</p>
 
@@ -498,7 +499,7 @@
   </div>
 
   <div class="bloco exe">
-    <span class="rotulo">Exercício resolvido 4.2 · Uma integral imprópria que parece impossível</span>
+    <span class="rotulo">Exercício resolvido 10.2 · Uma integral imprópria que parece impossível</span>
     <p>Calcule \(\displaystyle\int_0^\infty \frac{dx}{1+x^4}\), cujo valor exato é
     \(\dfrac{\pi}{2\sqrt{2}}\). O intervalo é infinito e nenhuma regra desta aula aceita
     isso.</p>
@@ -581,40 +582,40 @@
   <div class="bloco def">
     <span class="rotulo">Para resolver</span>
     <ol>
-      <li><b>4.1</b> Implemente a regra do ponto médio, \(\int \approx h\sum f(x_i + h/2)\), meça
+      <li><b>10.1</b> Implemente a regra do ponto médio, \(\int \approx h\sum f(x_i + h/2)\), meça
       a sua ordem e compare a constante do erro com a do trapézio. Mostre que ela é de segunda
       ordem com constante <em>metade</em> da do trapézio, e explique por que a regra que usa menos
       informação é a mais precisa das duas.</li>
 
-      <li><b>4.2</b> Reproduza a tabela de Romberg para \(\int_0^1 e^{-x^2}dx\) e diga quantas
+      <li><b>10.2</b> Reproduza a tabela de Romberg para \(\int_0^1 e^{-x^2}dx\) e diga quantas
       avaliações foram necessárias para \(10^{-12}\). Compare com o número de intervalos que o
-      exercício resolvido 4.1 previu para o trapézio.</li>
+      exercício resolvido 10.1 previu para o trapézio.</li>
 
-      <li><b>4.3</b> Calcule os nós e pesos de Gauss-Legendre para \(n = 2\) resolvendo o sistema
+      <li><b>10.3</b> Calcule os nós e pesos de Gauss-Legendre para \(n = 2\) resolvendo o sistema
       à mão: imponha exatidão para \(1, x, x^2, x^3\) e resolva as quatro equações. Confira que os
       nós são \(\pm1/\sqrt{3}\) e os pesos são ambos 1.</li>
 
-      <li><b>4.4</b> O período de um pêndulo de amplitude \(\theta_0\) é
+      <li><b>10.4</b> O período de um pêndulo de amplitude \(\theta_0\) é
       \(T = 4\sqrt{L/g}\,K(\sen(\theta_0/2))\), com \(K\) a integral elíptica completa
       \(\int_0^{\pi/2}\frac{d\varphi}{\sqrt{1-k^2\sen^2\varphi}}\). Calcule \(T/T_0\) para
       \(\theta_0\) de 10° a 179°, e diga o que acontece com a convergência quando \(\theta_0\) se
       aproxima de 180°. Por quê?</li>
 
-      <li><b>4.5</b> Integre \(\int_0^1 x^{-1/2}\sen x\,dx\), que tem singularidade integrável na
+      <li><b>10.5</b> Integre \(\int_0^1 x^{-1/2}\sen x\,dx\), que tem singularidade integrável na
       origem. Compare: Simpson direto, Simpson depois da troca \(x=u^2\), e a
       <code>quad</code> do SciPy com o argumento <code>points</code>. Meça as três ordens.</li>
 
-      <li><b>4.6</b> Verifique numericamente a afirmação da seção 7 sobre periódicos: integre
+      <li><b>10.6</b> Verifique numericamente a afirmação da seção 7 sobre periódicos: integre
       \(e^{\cos x}\) de 0 a \(2\pi\) pelo trapézio e faça o gráfico do logaritmo do erro contra
       \(n\). Mostre que ele é uma reta, e não uma parábola, o que caracteriza convergência
       exponencial. Depois integre de 0 a \(\pi\), meio período, e mostre que a mágica some.</li>
 
-      <li><b>4.7</b> Implemente uma quadratura adaptativa: divida o intervalo ao meio
+      <li><b>10.7</b> Implemente uma quadratura adaptativa: divida o intervalo ao meio
       recursivamente, e pare de dividir onde \(|S(\text{todo}) - S(\text{metades})|\) já for
       pequeno. Teste em \(\int_0^1 \sen(1/x)\,dx\), e conte quantas avaliações caíram em cada
       região. Compare com a malha uniforme que daria a mesma precisão.</li>
 
-      <li><b>4.8</b> Em meia página: a aula mostra um caso em que Simpson perde para o trapézio.
+      <li><b>10.8</b> Em meia página: a aula mostra um caso em que Simpson perde para o trapézio.
       Isso significa que a análise de ordem da seção 3 estava errada? Responda explicando a
       diferença entre a ordem assintótica de um método e o seu desempenho num problema
       específico, e diga que informação sobre o integrando decide a escolha.</li>
@@ -622,8 +623,8 @@
   </div>
 
   <nav class="nav-aulas">
-    <a href="aula03.html"><small>Aula anterior</small>← 3. Interpolação e ajuste</a>
-    <a class="prox" href="aula05.html"><small>Próxima aula</small>5. Simbólico e projeto →</a>
+    <a href="aula09.html"><small>Aula anterior</small>← 9. Interpolação e ajuste</a>
+    <a class="prox" href="aula11.html"><small>Próxima aula</small>11. Simbólico e projeto →</a>
   </nav>
 
 </main>
@@ -636,6 +637,6 @@
   <!--PORTAL--><p><small><a href="https://apianomorais.github.io/">Todas as disciplinas e a pesquisa em apianomorais.github.io</a></small></p><!--/PORTAL-->
 </footer>
 
-<script src="assets/js/widgets.js?v=202611220937"></script>
+<script src="assets/js/widgets.js?v=202611221002"></script>
 </body>
 </html>

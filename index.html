@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Métodos Numéricos | LFCA/URCA</title>
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
-<link rel="stylesheet" href="assets/css/estilo.css?v=202611220937">
-<script src="assets/js/comum.js?v=202611220937"></script>
+<link rel="stylesheet" href="assets/css/estilo.css?v=202611221002">
+<script src="assets/js/comum.js?v=202611221002"></script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
@@ -17,13 +17,14 @@
     <nav class="menu">
       <a href="index.html" class="ativo">Início</a>
       <span class="grupo">Erro</span>
-      <a href="aula01.html" class="num" title="Aula 1: Como o computador representa um número">1</a>
-      <span class="grupo">Métodos</span>
-      <a href="aula02.html" class="num" title="Aula 2: Raízes de equações">2</a>
-      <a href="aula03.html" class="num" title="Aula 3: Interpolação e ajuste de curvas">3</a>
-      <a href="aula04.html" class="num" title="Aula 4: Integração numérica">4</a>
+      <a href="aula02.html" class="num" title="Aula 2: Representação em ponto flutuante">2</a>
+      <span class="grupo">Raízes</span>
+      <a href="aula05.html" class="num" title="Aula 5: Newton-Raphson e a secante">5</a>
+      <span class="grupo">Interpolar</span>
+      <a href="aula09.html" class="num" title="Aula 9: Interpolação e ajuste de curvas">9</a>
+      <a href="aula10.html" class="num" title="Aula 10: Integração numérica">10</a>
       <span class="grupo">Fechamento</span>
-      <a href="aula05.html" class="num" title="Aula 5: Matemática simbólica e projeto integrador">5</a>
+      <a href="aula11.html" class="num" title="Aula 11: Matemática simbólica e projeto integrador">11</a>
     </nav>
   </div>
 </header>
@@ -33,7 +34,7 @@
 
   <div class="heroi">
     <h1>Métodos Numéricos</h1>
-    <p>Material interativo do Módulo III · Métodos Numéricos e Estatísticos</p>
+    <p>Material interativo do Módulo II · Métodos Numéricos e Estatísticos</p>
     <p class="meta">
       Prof. Apiano Morais · Laboratório de Física Computacional Aplicada (LFCA)<br>
       Universidade Regional do Cariri (URCA) · apiano.morais@urca.br
@@ -77,9 +78,15 @@
 
   <h3>Como este módulo se encaixa no curso</h3>
 
-  <p>Na disciplina <em>Métodos Numéricos e Estatísticos</em>, as cinco aulas reunidas aqui são
-  as de número 24 a 28 do cronograma, e fecham o semestre depois do módulo de Python e do de
-  estatística. Neste site elas são numeradas de 1 a 5, porque é só delas que o site trata.</p>
+  <p>Na disciplina <em>Métodos Numéricos e Estatísticos</em>, este é o <strong>Módulo II</strong>,
+  de 26 horas, que fecha o semestre depois do módulo de estatística. Ele cobre os capítulos 19 a
+  27 do material de apoio, e as aulas aqui seguem a ordem deles.</p>
+
+  <p>As duas últimas fogem a essa regra, e vale dizer por quê. Integração numérica e matemática
+  simbólica ainda não têm capítulo escrito no material, mas constam da Apresentação entre os
+  objetivos do curso, que promete que o aluno saberá "integrar numericamente e usar matemática
+  simbólica para verificar resultados". Elas estão aqui porque o curso as promete, e porque o
+  projeto integrador da última aula precisa das duas.</p>
 
   <div class="bloco alerta">
     <span class="rotulo">Nada de caixa preta</span>
@@ -96,55 +103,118 @@
 
   <h2>As aulas</h2>
 
-  <h3 class="unidade">O erro que a máquina comete</h3>
+  <h3 class="unidade">Como a máquina erra</h3>
 
   <div class="cartoes">
     <a class="cartao" href="aula01.html">
       <span class="numero">Aula 1</span>
-      <h3>Como o computador representa um número</h3>
-      <p>O padrão IEEE 754, o épsilon da máquina, por que a soma de ponto flutuante não é
-      associativa, cancelamento catastrófico, e a diferença entre um problema mal condicionado
-      e um algoritmo instável.</p>
+      <h3>Sistemas de numeração e conversão de bases</h3>
+      <p>Por que a máquina conta em dois, como se converte entre bases, e por que 0,1 não tem representação exata em binário por exatamente o mesmo motivo que 1/3 não tem em decimal.</p>
       <div class="etiquetas">
-        <span class="etiqueta">IEEE 754</span>
-        <span class="etiqueta">Cancelamento</span>
-        <span class="etiqueta">Condicionamento</span>
+        <span class="etiqueta">Binário</span>
+        <span class="etiqueta">Hexadecimal</span>
+        <span class="etiqueta">Conversão</span>
       </div>
     </a>
-  </div>
-
-  <h3 class="unidade">Resolver, interpolar, integrar</h3>
-
-  <div class="cartoes">
     <a class="cartao" href="aula02.html">
       <span class="numero">Aula 2</span>
-      <h3>Raízes de equações</h3>
-      <p>Bisseção, Newton-Raphson e secante, com a ordem de convergência medida e não apenas
-      afirmada, as três maneiras de Newton falhar, e a aplicação a equações de estado.</p>
+      <h3>Representação em ponto flutuante</h3>
+      <p>A norma IEEE 754, o épsilon da máquina, a grade não uniforme, a soma que muda de valor quando se troca a ordem, e o cancelamento catastrófico que devolve zero no lugar de uma raiz que existe.</p>
       <div class="etiquetas">
-        <span class="etiqueta">Bisseção</span>
-        <span class="etiqueta">Newton-Raphson</span>
-        <span class="etiqueta">Ordem de convergência</span>
+        <span class="etiqueta">IEEE 754</span>
+        <span class="etiqueta">Épsilon da máquina</span>
+        <span class="etiqueta">Cancelamento</span>
       </div>
     </a>
     <a class="cartao" href="aula03.html">
       <span class="numero">Aula 3</span>
+      <h3>Erros numéricos e propagação</h3>
+      <p>As três fontes de erro, como eles se propagam pelas operações e pelas funções, o número de condição, a diferença entre problema mal posto e algoritmo instável, e o dilema entre truncar e arredondar.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Propagação</span>
+        <span class="etiqueta">Condicionamento</span>
+        <span class="etiqueta">Estabilidade</span>
+      </div>
+    </a>
+  </div>
+
+  <h3 class="unidade">Raízes de equações</h3>
+
+  <div class="cartoes">
+    <a class="cartao" href="aula04.html">
+      <span class="numero">Aula 4</span>
+      <h3>O método da bisseção</h3>
+      <p>O teorema de Bolzano, o algoritmo que não falha nunca, a conta que diz de antemão quantas iterações serão precisas, os critérios de parada que enganam, e a lei de Wien.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Bolzano</span>
+        <span class="etiqueta">Bisseção</span>
+        <span class="etiqueta">Critérios de parada</span>
+      </div>
+    </a>
+    <a class="cartao" href="aula05.html">
+      <span class="numero">Aula 5</span>
+      <h3>Newton-Raphson e a secante</h3>
+      <p>Trocar a função pela tangente, a ordem de convergência medida e não apenas afirmada, as três maneiras de Newton falhar, e a secante com a razão áurea no expoente.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Newton-Raphson</span>
+        <span class="etiqueta">Secante</span>
+        <span class="etiqueta">Ordem de convergência</span>
+      </div>
+    </a>
+    <a class="cartao" href="aula06.html">
+      <span class="numero">Aula 6</span>
+      <h3>Métodos iterativos de ponto fixo</h3>
+      <p>Transformar f(x)=0 em x=g(x), o diagrama de teia, o critério que decide se a iteração converge antes de rodá-la, e a aceleração de Aitken e Steffensen.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Ponto fixo</span>
+        <span class="etiqueta">Diagrama de teia</span>
+        <span class="etiqueta">Aitken</span>
+      </div>
+    </a>
+  </div>
+
+  <h3 class="unidade">Raízes de polinômios</h3>
+
+  <div class="cartoes">
+    <a class="cartao" href="aula07.html">
+      <span class="numero">Aula 7</span>
+      <h3>Localização de raízes reais de polinômios</h3>
+      <p>O esquema de Horner, as cotas que encerram as raízes, a regra de sinais de Descartes, o teorema de Budan-Fourier, e a regra de Sturm, que conta exatamente quantas raízes há num intervalo.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Horner</span>
+        <span class="etiqueta">Descartes</span>
+        <span class="etiqueta">Sturm</span>
+      </div>
+    </a>
+    <a class="cartao" href="aula08.html">
+      <span class="numero">Aula 8</span>
+      <h3>Briot-Ruffini e raízes múltiplas</h3>
+      <p>Horner duplo, deflação, o diagnóstico de multiplicidade, o polinômio de Wilkinson e o que ele ensina sobre condicionamento, e Bairstow para raízes complexas.</p>
+      <div class="etiquetas">
+        <span class="etiqueta">Deflação</span>
+        <span class="etiqueta">Wilkinson</span>
+        <span class="etiqueta">Bairstow</span>
+      </div>
+    </a>
+  </div>
+
+  <h3 class="unidade">Interpolar e integrar</h3>
+
+  <div class="cartoes">
+    <a class="cartao" href="aula09.html">
+      <span class="numero">Aula 9</span>
       <h3>Interpolação e ajuste de curvas</h3>
-      <p>Lagrange e o fenômeno de Runge, splines cúbicas, mínimos quadrados, e a diferença
-      entre passar pelos pontos e passar perto deles, que é a diferença entre interpolar e
-      ajustar.</p>
+      <p>Lagrange e o fenômeno de Runge, splines cúbicas, mínimos quadrados, e a diferença entre passar pelos pontos e passar perto deles, que é a diferença entre interpolar e ajustar.</p>
       <div class="etiquetas">
         <span class="etiqueta">Lagrange</span>
         <span class="etiqueta">Splines</span>
         <span class="etiqueta">Mínimos quadrados</span>
       </div>
     </a>
-    <a class="cartao" href="aula04.html">
-      <span class="numero">Aula 4</span>
+    <a class="cartao" href="aula10.html">
+      <span class="numero">Aula 10</span>
       <h3>Integração numérica</h3>
-      <p>Trapézios e Simpson com as ordens deduzidas de Taylor, a extrapolação de Richardson
-      que gera o método de Romberg, e a quadratura gaussiana, que acerta polinômios de grau
-      alto com pouquíssimos pontos.</p>
+      <p>Trapézios e Simpson com as ordens deduzidas de Taylor, a extrapolação de Richardson que gera o método de Romberg, e a quadratura gaussiana, que acerta polinômios de grau alto com pouquíssimos pontos.</p>
       <div class="etiquetas">
         <span class="etiqueta">Simpson</span>
         <span class="etiqueta">Romberg</span>
@@ -156,12 +226,10 @@
   <h3 class="unidade">Fechamento</h3>
 
   <div class="cartoes">
-    <a class="cartao" href="aula05.html">
-      <span class="numero">Aula 5</span>
+    <a class="cartao" href="aula11.html">
+      <span class="numero">Aula 11</span>
       <h3>Matemática simbólica e projeto integrador</h3>
-      <p>SymPy como ferramenta de verificação, não de substituição: obter a resposta exata para
-      conferir a numérica, derivar fórmulas de erro automaticamente, e o projeto que junta os
-      quatro métodos num problema só.</p>
+      <p>SymPy como ferramenta de verificação, não de substituição: obter a resposta exata para conferir a numérica, derivar fórmulas de erro automaticamente, e o projeto que junta as aulas anteriores num problema só.</p>
       <div class="etiquetas">
         <span class="etiqueta">SymPy</span>
         <span class="etiqueta">Verificação</span>
